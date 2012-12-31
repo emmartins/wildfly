@@ -158,7 +158,7 @@
         <version.org.jboss.common.jboss-common-beans>1.1.0.Final</version.org.jboss.common.jboss-common-beans>
         <version.org.jboss.jboss-common-core>2.2.17.GA</version.org.jboss.jboss-common-core>
         <version.org.jboss.com.sun.httpserver>1.0.1.Final</version.org.jboss.com.sun.httpserver>
-        <version.org.jboss.ejb-client>1.0.16.Final</version.org.jboss.ejb-client>
+        <version.org.jboss.ejb-client>1.1.0.Beta1-SNAPSHOT</version.org.jboss.ejb-client>
         <version.org.jboss.ejb3.ext-api>2.0.0</version.org.jboss.ejb3.ext-api>
         <version.org.jboss.iiop-client>1.0.0.Final</version.org.jboss.iiop-client>
         <version.org.jboss.invocation>1.1.1.Final</version.org.jboss.invocation>
@@ -963,6 +963,12 @@
             <dependency>
                 <groupId>org.jboss.as</groupId>
                 <artifactId>jboss-as-ejb3</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            
+            <dependency>
+                <groupId>org.jboss.as</groupId>
+                <artifactId>jboss-as-ejb-over-http</artifactId>
                 <version>${project.version}</version>
             </dependency>
 
@@ -6405,6 +6411,7 @@
                 <module>webservices</module>
                 <module>weld</module>
                 <module>xts</module>
+                <module>ejb-over-http</module>
                 <module>testsuite/shared</module>
                 <module>testsuite</module>
             </modules>

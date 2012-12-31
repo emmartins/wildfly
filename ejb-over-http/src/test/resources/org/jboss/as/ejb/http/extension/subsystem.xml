@@ -1,0 +1,6 @@
+<subsystem xmlns="urn:jboss:domain:ejb-over-http:1.0">
+  <!--Optional:-->
+    <connector allowed-role-names="guest,admin" context-path="/ejbs" login-auth-method="BASIC" login-realm-name="RealmUsersRoles" security-domain="other" />
+    <connector context-path="/ejbs2" />
+    <connector context-path="/ejbs2" virtual-host="myhost" />
+</subsystem>

@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.security.AccessController;
 import java.security.Principal;
 import java.security.PrivilegedAction;
+import java.util.HashMap;
 import java.util.Map;
 
 import javax.security.jacc.PolicyContext;
@@ -81,6 +82,21 @@ public class SecurityContextAssociationValve extends ValveBase {
         }
         this.securityDomain = securityDomain;
         this.runAsIdentity = metaData.getRunAsIdentity();
+        this.contextId = contextId;
+    }
+
+    public SecurityContextAssociationValve(String securityDomain, String contextId, Map<String, RunAsIdentityMetaData> runAsIdentity) {
+        securityDomain = SecurityUtil.unprefixSecurityDomain(securityDomain);
+        if (securityDomain == null) {
+            securityDomain = SecurityConstants.DEFAULT_WEB_APPLICATION_POLICY;
+        }
+        this.securityDomain = securityDomain;
+        if(runAsIdentity == null) {
+            this.runAsIdentity = new HashMap<String,RunAsIdentityMetaData>();
+        }
+        else {
+            this.runAsIdentity = runAsIdentity;
+        }
         this.contextId = contextId;
     }
 

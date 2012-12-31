@@ -848,6 +848,10 @@
         <module-def name="org.jboss.as.ejb3">
             <maven-resource group="org.jboss.as" artifact="jboss-as-ejb3"/>
         </module-def>
+        
+        <module-def name="org.jboss.as.ejb-over-http">
+            <maven-resource group="org.jboss.as" artifact="jboss-as-ejb-over-http"/>
+        </module-def>
 
         <module-def name="org.jboss.as.host-controller">
             <maven-resource group="org.jboss.as" artifact="jboss-as-host-controller"/>

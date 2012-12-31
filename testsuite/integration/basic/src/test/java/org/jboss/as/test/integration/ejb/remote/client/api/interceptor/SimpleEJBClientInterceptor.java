@@ -36,7 +36,7 @@ public class SimpleEJBClientInterceptor implements EJBClientInterceptor {
 
     private final Map<String, Object> data;
 
-    SimpleEJBClientInterceptor(final Map<String, Object> data) {
+    public SimpleEJBClientInterceptor(final Map<String, Object> data) {
         this.data = data;
     }
 
