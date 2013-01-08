@@ -20,43 +20,27 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.as.ejb3.remote.http;
+package org.jboss.as.ejb3.remote.protocol.versionone;
 
-import org.jboss.as.clustering.registry.Registry;
-import org.jboss.as.clustering.registry.RegistryCollector;
+import java.io.IOException;
+import java.util.concurrent.ExecutorService;
+
 import org.jboss.as.ejb3.EjbLogger;
 import org.jboss.as.ejb3.EjbMessages;
-import org.jboss.as.ejb3.deployment.DeploymentModuleIdentifier;
 import org.jboss.as.ejb3.deployment.DeploymentRepository;
-import org.jboss.as.ejb3.deployment.DeploymentRepositoryListener;
-import org.jboss.as.ejb3.deployment.ModuleDeployment;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
-import org.jboss.as.ejb3.remote.protocol.versionone.ChannelAssociation;
-import org.jboss.as.network.ClientMapping;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.CloseHandler;
 import org.jboss.remoting3.MessageInputStream;
-import org.jboss.remoting3.MessageOutputStream;
 import org.xnio.IoUtils;
-
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ExecutorService;
 
 /**
  *
  * @author martins
  *
  */
-public class VersionOneProtocolChannelReceiver implements Channel.Receiver {
+public class HttpVersionOneProtocolChannelReceiver implements Channel.Receiver {
 
     private static final byte HEADER_SESSION_OPEN_REQUEST = 0x01;
     private static final byte HEADER_INVOCATION_REQUEST = 0x03;
@@ -74,7 +58,7 @@ public class VersionOneProtocolChannelReceiver implements Channel.Receiver {
     private final ExecutorService executorService;
     private final RemoteAsyncInvocationCancelStatusService remoteAsyncInvocationCancelStatus;
 
-    public VersionOneProtocolChannelReceiver(final ChannelAssociation channelAssociation,
+    public HttpVersionOneProtocolChannelReceiver(final ChannelAssociation channelAssociation,
             final DeploymentRepository deploymentRepository, final EJBRemoteTransactionsRepository transactionsRepository,
             final MarshallerFactory marshallerFactory, final ExecutorService executorService,
             final RemoteAsyncInvocationCancelStatusService asyncInvocationCancelStatusService) {

@@ -43,6 +43,7 @@ import org.jboss.as.ejb3.remote.EJBRemoteConnectorService;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.EJBRemotingConnectorClientMappingsEntryProviderService;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
+import org.jboss.as.ejb3.remote.http.HttpEJBRemoteConnectorService;
 import org.jboss.as.remoting.RemotingServices;
 import org.jboss.as.server.ServerEnvironment;
 import org.jboss.as.server.ServerEnvironmentService;
@@ -119,7 +120,8 @@ public class EJB3RemoteServiceAdd extends AbstractBoottimeAddStepHandler {
         final OptionMap channelCreationOptions = this.getChannelCreationOptions(context);
         // Install the EJB remoting connector service which will listen for client connections on the remoting channel
         // TODO: Externalize (expose via management API if needed) the version and the marshalling strategy
-        final EJBRemoteConnectorService ejbRemoteConnectorService = new EJBRemoteConnectorService((byte) 0x01, new String[]{"river"}, remotingServerServiceName, channelCreationOptions);
+        final String[] supportedMarshallingStrategies = new String[]{"river"};
+        final EJBRemoteConnectorService ejbRemoteConnectorService = new EJBRemoteConnectorService((byte) 0x01, supportedMarshallingStrategies, remotingServerServiceName, channelCreationOptions);
         final ServiceBuilder<EJBRemoteConnectorService> ejbRemoteConnectorServiceBuilder = serviceTarget.addService(EJBRemoteConnectorService.SERVICE_NAME, ejbRemoteConnectorService);
         // add dependency on the Remoting subsystem endpoint
         ejbRemoteConnectorServiceBuilder.addDependency(RemotingServices.SUBSYSTEM_ENDPOINT, Endpoint.class, ejbRemoteConnectorService.getEndpointInjector());
@@ -142,6 +144,23 @@ public class EJB3RemoteServiceAdd extends AbstractBoottimeAddStepHandler {
         // add it to the services to be returned
         services.add(ejbRemotingConnectorServiceController);
 
+        // Install the EJB http connector service which will listen for client requests on http
+        final HttpEJBRemoteConnectorService httpEjbRemoteConnectorService = new HttpEJBRemoteConnectorService(supportedMarshallingStrategies);
+        final ServiceBuilder<HttpEJBRemoteConnectorService> httpEjbRemoteConnectorServiceBuilder = serviceTarget.addService(HttpEJBRemoteConnectorService.SERVICE_NAME, httpEjbRemoteConnectorService);
+        // add dependency on the EJB remoting connector service
+        httpEjbRemoteConnectorServiceBuilder.addDependency(EJBRemoteConnectorService.SERVICE_NAME);
+        // add rest of the dependencies
+        httpEjbRemoteConnectorServiceBuilder.addDependency(EJB3SubsystemModel.BASE_THREAD_POOL_SERVICE_NAME.append(threadPoolName), ExecutorService.class, httpEjbRemoteConnectorService.getExecutorService())
+                .addDependency(DeploymentRepository.SERVICE_NAME, DeploymentRepository.class, httpEjbRemoteConnectorService.getDeploymentRepositoryInjector())
+                .addDependency(EJBRemoteTransactionsRepository.SERVICE_NAME, EJBRemoteTransactionsRepository.class, httpEjbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector())
+                .addDependency(RemoteAsyncInvocationCancelStatusService.SERVICE_NAME, RemoteAsyncInvocationCancelStatusService.class, httpEjbRemoteConnectorService.getAsyncInvocationCancelStatusInjector())
+                .setInitialMode(ServiceController.Mode.ACTIVE);
+        if (verificationHandler != null) {
+            httpEjbRemoteConnectorServiceBuilder.addListener(verificationHandler);
+        }
+        final ServiceController<HttpEJBRemoteConnectorService> httpEjbRemotingConnectorServiceController = httpEjbRemoteConnectorServiceBuilder.install();
+        // add it to the services to be returned
+        services.add(httpEjbRemotingConnectorServiceController);
         return services;
     }
 
