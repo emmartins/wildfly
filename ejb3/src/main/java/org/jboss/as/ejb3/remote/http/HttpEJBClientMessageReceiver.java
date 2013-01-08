@@ -10,6 +10,7 @@ import org.jboss.as.ejb3.deployment.DeploymentRepository;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
 import org.jboss.as.ejb3.remote.protocol.versionone.ChannelAssociation;
+import org.jboss.as.ejb3.remote.protocol.versionone.HttpVersionOneProtocolChannelReceiver;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.marshalling.Marshalling;
 import org.jboss.remoting3.Channel;
@@ -77,7 +78,7 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
                 case 0x01:
                     final MarshallerFactory marshallerFactory = getMarshallerFactory(clientMarshallingStrategy);
                     // enroll VersionOneProtocolChannelReceiver for handling subsequent messages on this channel
-                    final VersionOneProtocolChannelReceiver receiver = new VersionOneProtocolChannelReceiver(
+                    final HttpVersionOneProtocolChannelReceiver receiver = new HttpVersionOneProtocolChannelReceiver(
                             channelAssociation, deploymentRepository, ejbRemoteTransactionsRepository, marshallerFactory,
                             executorService, asyncInvocationCancelStatus);
                     // trigger the receiving

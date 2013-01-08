@@ -43,6 +43,7 @@ import org.jboss.as.ejb3.remote.EJBRemoteConnectorService;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.EJBRemotingConnectorClientMappingsEntryProviderService;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
+import org.jboss.as.ejb3.remote.http.HttpEJBRemoteConnectorService;
 import org.jboss.as.remoting.RemotingServices;
 import org.jboss.as.server.ServerEnvironment;
 import org.jboss.as.server.ServerEnvironmentService;

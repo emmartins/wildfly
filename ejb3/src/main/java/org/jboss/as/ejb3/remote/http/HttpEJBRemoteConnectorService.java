@@ -23,9 +23,6 @@ package org.jboss.as.ejb3.remote.http;
 
 import java.util.concurrent.ExecutorService;
 
-import javax.transaction.TransactionManager;
-import javax.transaction.TransactionSynchronizationRegistry;
-
 import org.jboss.as.ejb3.deployment.DeploymentRepository;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
@@ -36,8 +33,6 @@ import org.jboss.as.naming.ServiceBasedNamingStore;
 import org.jboss.as.naming.ValueManagedReference;
 import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.service.BinderService;
-import org.jboss.ejb.client.ConstantContextSelector;
-import org.jboss.ejb.client.EJBClientTransactionContext;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
@@ -64,8 +59,6 @@ public class HttpEJBRemoteConnectorService implements Service<HttpEJBRemoteConne
     private final InjectedValue<DeploymentRepository> deploymentRepositoryInjectedValue = new InjectedValue<DeploymentRepository>();
     private final InjectedValue<EJBRemoteTransactionsRepository> ejbRemoteTransactionsRepositoryInjectedValue = new InjectedValue<EJBRemoteTransactionsRepository>();
     private final InjectedValue<RemoteAsyncInvocationCancelStatusService> remoteAsyncInvocationCancelStatus = new InjectedValue<RemoteAsyncInvocationCancelStatusService>();
-    private final InjectedValue<TransactionManager> txManager = new InjectedValue<TransactionManager>();
-    private final InjectedValue<TransactionSynchronizationRegistry> txSyncRegistry = new InjectedValue<TransactionSynchronizationRegistry>();
     private final String[] supportedMarshallingStrategies;
 
     public HttpEJBRemoteConnectorService(final String[] supportedMarshallingStrategies) {
@@ -102,14 +95,6 @@ public class HttpEJBRemoteConnectorService implements Service<HttpEJBRemoteConne
                 .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class,
                         binderService.getNamingStoreInjector());
         binderBuilder.setInitialMode(ServiceController.Mode.ACTIVE).install();
-
-        // TODO check with jpai if this is ok
-        // setup a EJBClientTransactionContext backed the transaction manager on this server.
-        // This will be used to propagate the transactions from this server to remote servers during EJB invocations
-        final EJBClientTransactionContext ejbClientTransactionContext = EJBClientTransactionContext.create(
-                this.txManager.getValue(), this.txSyncRegistry.getValue());
-        EJBClientTransactionContext.setSelector(new ConstantContextSelector<EJBClientTransactionContext>(
-                ejbClientTransactionContext));
     }
 
     private Channel.Receiver getMessageReceiver() {
@@ -120,21 +105,11 @@ public class HttpEJBRemoteConnectorService implements Service<HttpEJBRemoteConne
 
     @Override
     public void stop(StopContext context) {
-        // reset the EJBClientTransactionContext on this server
-        EJBClientTransactionContext.setSelector(new ConstantContextSelector<EJBClientTransactionContext>(null));
     }
 
     @Override
     public HttpEJBRemoteConnectorService getValue() throws IllegalStateException, IllegalArgumentException {
         return this;
-    }
-
-    public Injector<TransactionManager> getTransactionManagerInjector() {
-        return this.txManager;
-    }
-
-    public Injector<TransactionSynchronizationRegistry> getTxSyncRegistryInjector() {
-        return this.txSyncRegistry;
     }
 
     public InjectedValue<ExecutorService> getExecutorService() {
