@@ -11,7 +11,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import org.jboss.remoting3.Channel;
 
-public class HttpEJBRemoteServlet extends HttpServlet {
+public final class HttpEJBRemoteServlet extends HttpServlet {
 
     /**
      *
