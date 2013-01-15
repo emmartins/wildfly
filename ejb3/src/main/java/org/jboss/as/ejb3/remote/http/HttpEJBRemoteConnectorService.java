@@ -87,7 +87,7 @@ public class HttpEJBRemoteConnectorService implements Service<HttpEJBRemoteConne
         };
         // add the message receiver to jndi
         final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(JNDI_NAME);
-        final BinderService binderService = new BinderService(bindInfo.getBindName(), this);
+        final BinderService binderService = new BinderService(bindInfo.getBindName());
         final ServiceBuilder<?> binderBuilder = context
                 .getChildTarget()
                 .addService(bindInfo.getBinderServiceName(), binderService)

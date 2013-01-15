@@ -21,12 +21,25 @@
  */
 package org.jboss.as.test.integration.ejb.remote.http;
 
+import org.jboss.arquillian.container.test.api.Deployer;
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
+import org.jboss.arquillian.test.api.ArquillianResource;
+import org.jboss.ejb.client.ContextSelector;
+import org.jboss.ejb.client.EJBClient;
+import org.jboss.ejb.client.EJBClientContext;
+import org.jboss.ejb.client.StatelessEJBLocator;
+import org.jboss.ejb.client.http.HttpEJBReceiver;
+import org.jboss.ejb.client.remoting.ConfigBasedEJBClientContextSelector;
+import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.asset.EmptyAsset;
 import org.jboss.shrinkwrap.api.asset.StringAsset;
+import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
+import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
@@ -39,16 +52,83 @@ import org.junit.runner.RunWith;
 @RunAsClient
 public class HttpEJBRemoteServletDeployTestCase {
 
+    private static final String APP_NAME = "ejb-remote-client-api-test";
+
+    private static final String MODULE_NAME = "ejb";
+
+    private static final String EAR_DEPLOYMENT_NAME = APP_NAME;
+    private static final String SERVLET_DEPLOYMENT_NAME = "ejb3-remote";
+
+    @ArquillianResource
+    private Deployer deployer;
+    /**
+     * Creates an EJB deployment
+     *
+     * @return
+     */
+    @Deployment(name = HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME, managed = false)
+    public static Archive<?> createEar() {
+        final EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class, APP_NAME + ".ear");
+        final JavaArchive jar = ShrinkWrap.create(JavaArchive.class, MODULE_NAME + ".jar");
+        jar.addClasses(EchoRemote.class, EchoBean.class);
+        jar.addAsManifestResource(EmptyAsset.INSTANCE, "beans.xml");
+        ear.addAsModule(jar);
+        return ear;
+    }
+
     @Deployment
-    public static WebArchive single() {
-        WebArchive war = ShrinkWrap.create(WebArchive.class, "ejb3-connector.war");
-        war.addAsWebInfResource(HttpEJBRemoteServletDeployTestCase.class.getPackage(), "web.xml", "web.xml");
+    public static WebArchive createServlet() {
+        WebArchive war = ShrinkWrap.create(WebArchive.class, SERVLET_DEPLOYMENT_NAME+".war");
+        war.setWebXML(HttpEJBRemoteServletDeployTestCase.class.getPackage(), "web.xml");
         war.addAsManifestResource(new StringAsset("Dependencies: org.jboss.as.ejb3 \n"), "MANIFEST.MF");
         return war;
     }
 
     @Test
-    public void testDeploy() throws Exception {
+    public void tesHttp() throws Exception {
+        try {
+            // deploy the unmanaged sar
+            deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+            final HttpEJBReceiver httpEJBReceiver = new HttpEJBReceiver("http://127.0.0.1:8080/"+SERVLET_DEPLOYMENT_NAME);
+            httpEJBReceiver.registerModule2(APP_NAME, MODULE_NAME, "");
+            ContextSelector<EJBClientContext> previousSelector = EJBClientContext.setSelector(new ConfigBasedEJBClientContextSelector(null));
+            try {
+                EJBClientContext.requireCurrent().registerEJBReceiver(httpEJBReceiver);
+                final StatelessEJBLocator<EchoRemote> locator = new StatelessEJBLocator(EchoRemote.class, APP_NAME, MODULE_NAME, EchoBean.class.getSimpleName(), "");
+                final EchoRemote proxy = EJBClient.createProxy(locator);
+                Assert.assertNotNull("Received a null proxy", proxy);
+                final String message = "Hello world from a really remote client";
+                final String echo = proxy.echo(message);
+                Assert.assertEquals("Unexpected echo message", message, echo);
+            } finally {
+                // unregister the receiver
+                EJBClientContext.requireCurrent().unregisterEJBReceiver(httpEJBReceiver);
+                if (previousSelector != null) {
+                    EJBClientContext.setSelector(previousSelector);
+                }
+            }
+            /*
+            URL url = new URL("http://127.0.0.1:8080/"+SERVLET_DEPLOYMENT_NAME);
+            URLConnection connection = url.openConnection();
+            connection.setDoOutput(true);
 
+            OutputStreamWriter out = new OutputStreamWriter(
+                                             connection.getOutputStream());
+            out.write("string= blablabla");
+            out.close();
+
+            BufferedReader in = new BufferedReader(
+                                        new InputStreamReader(
+                                        connection.getInputStream()));
+            String decodedString;
+            while ((decodedString = in.readLine()) != null) {
+                System.out.println(decodedString);
+            }
+            in.close();
+            */
+        } finally {
+            // undeploy it
+            deployer.undeploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+        }
     }
 }
