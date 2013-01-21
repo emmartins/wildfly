@@ -41,6 +41,7 @@ public class HttpEJBRemoteServlet extends HttpServlet {
     }
 
     private void doRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        resp.setContentType("application/octet-stream");
         final AsyncContext asyncContext = req.startAsync();
         final HttpChannel httpChannel = new HttpChannel(asyncContext);
         final HttpMessageInputStream in =  new HttpMessageInputStream(asyncContext.getRequest().getInputStream());

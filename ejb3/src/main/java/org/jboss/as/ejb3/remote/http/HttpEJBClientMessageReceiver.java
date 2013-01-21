@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 
 import org.jboss.as.ejb3.EjbLogger;
+import org.jboss.as.ejb3.EjbMessages;
 import org.jboss.as.ejb3.deployment.DeploymentRepository;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
@@ -62,7 +63,7 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
 
     @Override
     public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
-        final ChannelAssociation channelAssociation = new ChannelAssociation(channel);
+        final ChannelAssociation channelAssociation = new HttpChannelAssociation(channel);
         final DataInputStream dataInputStream = new DataInputStream(messageInputStream);
         try {
             final byte version = dataInputStream.readByte();
@@ -81,12 +82,13 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
                     final HttpVersionOneProtocolChannelReceiver receiver = new HttpVersionOneProtocolChannelReceiver(
                             channelAssociation, deploymentRepository, ejbRemoteTransactionsRepository, marshallerFactory,
                             executorService, asyncInvocationCancelStatus);
-                    // trigger the receiving
-                    receiver.startReceiving();
+                    // ask msg handling, instead of start receiving in remoting one TODO rethink common api, perhaps factory of protocol receiver?
+                    // receiver.startReceiving();
+                    receiver.handleMessage(channel, messageInputStream);
                     break;
 
                 default:
-                    throw EjbLogger.EJB3_LOGGER.ejbRemoteServiceCannotHandleClientVersion(version);
+                    throw EjbMessages.MESSAGES.ejbRemoteServiceCannotHandleClientVersion(version);
             }
 
         } catch (IOException e) {
@@ -106,7 +108,7 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
     private MarshallerFactory getMarshallerFactory(final String marshallerStrategy) {
         final MarshallerFactory marshallerFactory = Marshalling.getProvidedMarshallerFactory(marshallerStrategy);
         if (marshallerFactory == null) {
-            throw EjbLogger.EJB3_LOGGER.failedToFindMarshallerFactoryForStrategy(marshallerStrategy);
+            throw EjbMessages.MESSAGES.failedToFindMarshallerFactoryForStrategy(marshallerStrategy);
         }
         return marshallerFactory;
     }

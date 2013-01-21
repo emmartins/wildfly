@@ -89,7 +89,7 @@ public class HttpEJBRemoteServletDeployTestCase {
         try {
             // deploy the unmanaged sar
             deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
-            final HttpEJBReceiver httpEJBReceiver = new HttpEJBReceiver("http://127.0.0.1:8080/"+SERVLET_DEPLOYMENT_NAME);
+            final HttpEJBReceiver httpEJBReceiver = new HttpEJBReceiver("http://localhost:8080/"+SERVLET_DEPLOYMENT_NAME+"/");
             httpEJBReceiver.registerModule2(APP_NAME, MODULE_NAME, "");
             ContextSelector<EJBClientContext> previousSelector = EJBClientContext.setSelector(new ConfigBasedEJBClientContextSelector(null));
             try {
@@ -107,25 +107,6 @@ public class HttpEJBRemoteServletDeployTestCase {
                     EJBClientContext.setSelector(previousSelector);
                 }
             }
-            /*
-            URL url = new URL("http://127.0.0.1:8080/"+SERVLET_DEPLOYMENT_NAME);
-            URLConnection connection = url.openConnection();
-            connection.setDoOutput(true);
-
-            OutputStreamWriter out = new OutputStreamWriter(
-                                             connection.getOutputStream());
-            out.write("string= blablabla");
-            out.close();
-
-            BufferedReader in = new BufferedReader(
-                                        new InputStreamReader(
-                                        connection.getInputStream()));
-            String decodedString;
-            while ((decodedString = in.readLine()) != null) {
-                System.out.println(decodedString);
-            }
-            in.close();
-            */
         } finally {
             // undeploy it
             deployer.undeploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);

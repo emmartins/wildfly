@@ -38,7 +38,7 @@ public class EchoBean implements EchoRemote {
 
     @Override
     public String echo(String message) {
-        logger.info(this.getClass().getSimpleName() + " echoing message " + message, new Exception());
+        logger.info(this.getClass().getSimpleName() + " echoing message " + message);
         return message;
     }
 
