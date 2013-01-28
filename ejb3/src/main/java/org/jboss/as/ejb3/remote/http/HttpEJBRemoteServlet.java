@@ -10,6 +10,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jboss.as.ejb3.EjbLogger;
+
 public class HttpEJBRemoteServlet extends HttpServlet {
 
     /**
@@ -41,6 +43,7 @@ public class HttpEJBRemoteServlet extends HttpServlet {
     }
 
     private void doRequest(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        EjbLogger.ROOT_LOGGER.info("HttpEJBRemoteServlet:doRequest()");
         resp.setContentType("application/octet-stream");
         final AsyncContext asyncContext = req.startAsync();
         final HttpChannel httpChannel = new HttpChannel(asyncContext);
