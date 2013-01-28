@@ -63,6 +63,8 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
 
     @Override
     public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
+
+        EjbLogger.ROOT_LOGGER.info("HttpEJBClientMessageReceiver:handleMessage()");
         final ChannelAssociation channelAssociation = new HttpChannelAssociation(channel);
         final DataInputStream dataInputStream = new DataInputStream(messageInputStream);
         try {
