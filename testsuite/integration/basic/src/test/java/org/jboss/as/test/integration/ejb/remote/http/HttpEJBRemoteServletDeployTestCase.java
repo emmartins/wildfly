@@ -37,6 +37,7 @@ import org.jboss.ejb.client.EJBClient;
 import org.jboss.ejb.client.EJBClientConfiguration;
 import org.jboss.ejb.client.EJBClientContext;
 import org.jboss.ejb.client.PropertiesBasedEJBClientConfiguration;
+import org.jboss.ejb.client.StatefulEJBLocator;
 import org.jboss.ejb.client.StatelessEJBLocator;
 import org.jboss.ejb.client.remoting.ConfigBasedEJBClientContextSelector;
 import org.jboss.shrinkwrap.api.Archive;
@@ -75,7 +76,7 @@ public class HttpEJBRemoteServletDeployTestCase {
     public static Archive<?> createEar() {
         final EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class, APP_NAME + ".ear");
         final JavaArchive jar = ShrinkWrap.create(JavaArchive.class, MODULE_NAME + ".jar");
-        jar.addClasses(EchoRemote.class, EchoBean.class);
+        jar.addClasses(EchoRemote.class, EchoBean.class, CounterRemote.class, CounterBean.class);
         jar.addAsManifestResource(EmptyAsset.INSTANCE, "beans.xml");
         ear.addAsModule(jar);
         return ear;
@@ -90,7 +91,7 @@ public class HttpEJBRemoteServletDeployTestCase {
     }
 
     @Test
-    public void testClientAPI() throws Exception {
+    public void testStatelessClientAPI() throws Exception {
         // there are config files in the classpath, by setting this property the client won't look at it and merge with the test config
         final String propertyName = "jboss.ejb.client.properties.skip.classloader.scan";
         final String propertyValue = System.getProperty(propertyName);
@@ -100,18 +101,7 @@ public class HttpEJBRemoteServletDeployTestCase {
                 // deploy the unmanaged sar
                 deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
                 // setup client config
-                Properties properties = new Properties();
-                properties.put("endpoint.name", "http");
-                properties.put("remote.connections","default");
-                properties.put("remote.connection.default.transport","http");
-                properties.put("remote.connection.default.host","localhost");
-                properties.put("remote.connection.default.port","8080");
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS","false");
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",SERVLET_DEPLOYMENT_NAME);
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT","jdk");
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME",APP_NAME);
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",MODULE_NAME);
-                properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME","");
+                Properties properties = getClientAPIProperties();
                 // create and activate the selector with the custom config
                 final EJBClientConfiguration clientConfiguration = new PropertiesBasedEJBClientConfiguration(properties);
                 final ConfigBasedEJBClientContextSelector selector = new ConfigBasedEJBClientContextSelector(clientConfiguration);
@@ -144,7 +134,67 @@ public class HttpEJBRemoteServletDeployTestCase {
     }
 
     @Test
-    public void testJNDI() throws Exception {
+    public void testStatefullClientAPI() throws Exception {
+        // there are config files in the classpath, by setting this property the client won't look at it and merge with the test config
+        final String propertyName = "jboss.ejb.client.properties.skip.classloader.scan";
+        final String propertyValue = System.getProperty(propertyName);
+        try {
+            System.setProperty(propertyName,"true");
+            try {
+                // deploy the unmanaged sar
+                deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+                // setup client config
+                Properties properties = getClientAPIProperties();
+                // create and activate the selector with the custom config
+                final EJBClientConfiguration clientConfiguration = new PropertiesBasedEJBClientConfiguration(properties);
+                final ConfigBasedEJBClientContextSelector selector = new ConfigBasedEJBClientContextSelector(clientConfiguration);
+                ContextSelector<EJBClientContext> previousSelector = EJBClientContext.setSelector(selector);
+                try {
+                    // get the ejb proxy
+                    StatefulEJBLocator<CounterRemote> locator = EJBClient.createSession(CounterRemote.class, APP_NAME, MODULE_NAME, CounterBean.class.getSimpleName(), "");
+                    final CounterRemote proxy = EJBClient.createProxy(locator);
+                    Assert.assertNotNull("Received a null proxy", proxy);
+                    // invoke it
+                    int counter = proxy.addAndGet(1);
+                    Assert.assertEquals("Unexpected counter value", 1, counter);
+                    counter = proxy.addAndGet(1);
+                    Assert.assertEquals("Unexpected counter value", 2, counter);
+                } finally {
+                    if (previousSelector != null) {
+                        EJBClientContext.setSelector(previousSelector);
+                    }
+                }
+            } finally {
+                // undeploy it
+                deployer.undeploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+            }
+        } finally {
+            if (propertyValue != null) {
+                System.setProperty(propertyName,propertyValue);
+            } else {
+                System.clearProperty(propertyName);
+            }
+        }
+    }
+
+    private Properties getClientAPIProperties() {
+        Properties properties = new Properties();
+        properties.put("endpoint.name", "http");
+        properties.put("remote.connections","default");
+        properties.put("remote.connection.default.transport","http");
+        properties.put("remote.connection.default.host","localhost");
+        properties.put("remote.connection.default.port","8080");
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS","false");
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",SERVLET_DEPLOYMENT_NAME);
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT","jdk");
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME",APP_NAME);
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",MODULE_NAME);
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME","");
+        return properties;
+    }
+
+    @Test
+    public void testStatelessJNDI() throws Exception {
         // there are config files in the classpath, by setting this property the client won't look at it and merge with the test config
         final String propertyName = "jboss.ejb.client.properties.skip.classloader.scan";
         final String propertyValue = System.getProperty(propertyName);
@@ -154,21 +204,7 @@ public class HttpEJBRemoteServletDeployTestCase {
                 // deploy the unmanaged sar
                 deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
                 // setup jndi env
-                final Hashtable<String,String> jndiProperties = new Hashtable<String,String>();
-                jndiProperties.put(Context.URL_PKG_PREFIXES, "org.jboss.ejb.client.naming");
-                jndiProperties.put("endpoint.name", "http");
-                jndiProperties.put("remote.connections","default");
-                jndiProperties.put("remote.connection.default.transport","http");
-                jndiProperties.put("remote.connection.default.host","localhost");
-                jndiProperties.put("remote.connection.default.port","8080");
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS","false");
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",SERVLET_DEPLOYMENT_NAME);
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT","jdk");
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME",APP_NAME);
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",MODULE_NAME);
-                jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME","");
-                // without this property the client won't setup the client with the jndi env properties
-                jndiProperties.put("org.jboss.ejb.client.scoped.context", "true");
+                final Hashtable<String,String> jndiProperties = getJNDIProperties();
                 // create context and lookup bean proxy
                 final Context context = new InitialContext(jndiProperties);
                 final EchoRemote proxy = (EchoRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + "" + "/" + EchoBean.class.getSimpleName() + "!" + EchoRemote.class.getName());
@@ -189,4 +225,58 @@ public class HttpEJBRemoteServletDeployTestCase {
             }
         }
     }
+
+    @Test
+    public void testStatefullJNDI() throws Exception {
+        // there are config files in the classpath, by setting this property the client won't look at it and merge with the test config
+        final String propertyName = "jboss.ejb.client.properties.skip.classloader.scan";
+        final String propertyValue = System.getProperty(propertyName);
+        try {
+            System.setProperty(propertyName,"true");
+            try {
+                // deploy the unmanaged sar
+                deployer.deploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+                // setup jndi env
+                final Hashtable<String,String> jndiProperties = getJNDIProperties();
+                // create context and lookup bean proxy
+                final Context context = new InitialContext(jndiProperties);
+                final CounterRemote proxy = (CounterRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + "" + "/" + CounterBean.class.getSimpleName() + "!" + CounterRemote.class.getName()+"?stateful");
+                Assert.assertNotNull("Received a null proxy", proxy);
+                // invoke the bean
+                int counter = proxy.addAndGet(1);
+                Assert.assertEquals("Unexpected counter value", 1, counter);
+                counter = proxy.addAndGet(1);
+                Assert.assertEquals("Unexpected counter value", 2, counter);
+            } finally {
+                // undeploy it
+                deployer.undeploy(HttpEJBRemoteServletDeployTestCase.EAR_DEPLOYMENT_NAME);
+            }
+        } finally {
+            if (propertyValue != null) {
+                System.setProperty(propertyName,propertyValue);
+            } else {
+                System.clearProperty(propertyName);
+            }
+        }
+    }
+
+    private Hashtable<String,String> getJNDIProperties() {
+        final Hashtable<String,String> jndiProperties = new Hashtable<String,String>();
+        jndiProperties.put(Context.URL_PKG_PREFIXES, "org.jboss.ejb.client.naming");
+        jndiProperties.put("endpoint.name", "http");
+        jndiProperties.put("remote.connections","default");
+        jndiProperties.put("remote.connection.default.transport","http");
+        jndiProperties.put("remote.connection.default.host","localhost");
+        jndiProperties.put("remote.connection.default.port","8080");
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS","false");
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",SERVLET_DEPLOYMENT_NAME);
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT","apache");
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME",APP_NAME);
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",MODULE_NAME);
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME","");
+        // without this property the client won't setup the client with the jndi env properties
+        jndiProperties.put("org.jboss.ejb.client.scoped.context", "true");
+        return jndiProperties;
+    }
+
 }

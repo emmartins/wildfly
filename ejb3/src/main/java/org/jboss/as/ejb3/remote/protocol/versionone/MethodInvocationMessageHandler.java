@@ -200,10 +200,13 @@ class MethodInvocationMessageHandler extends EJBIdentifierBasedMessageHandler {
                     try {
                         result = invokeMethod(invocationId, componentView, invokedMethod, methodParams, locator, attachments);
                     } catch (Throwable throwable) {
+                        EjbLogger.ROOT_LOGGER.error(throwable);
+
                         try {
                             // write out the failure
                             MethodInvocationMessageHandler.this.writeException(channelAssociation, MethodInvocationMessageHandler.this.marshallerFactory, invocationId, throwable, attachments);
                         } catch (Throwable ioe) {
+                            EjbLogger.ROOT_LOGGER.error(ioe);
                             // we couldn't write out a method invocation failure message. So let's at least log the
                             // actual method invocation exception, for debugging/reference
                             EjbLogger.ROOT_LOGGER.errorInvokingMethod(throwable, invokedMethod, beanName, appName, moduleName, distinctName);
