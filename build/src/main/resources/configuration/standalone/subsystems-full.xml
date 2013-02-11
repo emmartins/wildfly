@@ -31,5 +31,6 @@
       <subsystem>configuration/subsystems/web.xml</subsystem>
       <subsystem>configuration/subsystems/webservices.xml</subsystem>
       <subsystem>configuration/subsystems/weld.xml</subsystem>
+      <subsystem>configuration/subsystems/ejb-over-http.xml</subsystem>
    </subsystems>
 </config>

@@ -1,0 +1,6 @@
+<subsystem xmlns="urn:jboss:domain:ejb-over-http:1.0">
+  <!--Optional:-->
+    <connector context="ejbs" security-domain="other" />
+    <connector context="ejbs2" />
+    <connector context="ejbs2" virtual-host="myhost" />
+</subsystem>

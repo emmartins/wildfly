@@ -1,0 +1,22 @@
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+            targetNamespace="urn:jboss:domain:ejb-over-http:1.0"
+            xmlns="urn:jboss:domain:ejb-over-http:1.0"
+            elementFormDefault="qualified"
+            attributeFormDefault="unqualified"
+            version="1.0">
+
+    <xs:element name="subsystem" type="ejb-over-http-subsystemType" />
+
+    <xs:complexType name="ejb-over-http-subsystemType">
+        <xs:sequence>
+            <xs:element name="connector" type="connectorType" minOccurs="0" maxOccurs="unbounded" />
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="connectorType">
+        <xs:attribute name="context" type="xs:string" use="required" />
+        <xs:attribute name="virtual-host" type="xs:string" default="default-host" />
+        <xs:attribute name="security-domain" type="xs:string" />
+    </xs:complexType>
+
+</xs:schema>

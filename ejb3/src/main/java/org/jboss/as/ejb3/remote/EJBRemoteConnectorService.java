@@ -299,11 +299,11 @@ public class EJBRemoteConnectorService implements Service<EJBRemoteConnectorServ
         return executorService;
     }
 
-    public Injector<DeploymentRepository> getDeploymentRepositoryInjector() {
+    public InjectedValue<DeploymentRepository> getDeploymentRepositoryInjector() {
         return this.deploymentRepositoryInjectedValue;
     }
 
-    public Injector<EJBRemoteTransactionsRepository> getEJBRemoteTransactionsRepositoryInjector() {
+    public InjectedValue<EJBRemoteTransactionsRepository> getEJBRemoteTransactionsRepositoryInjector() {
         return this.ejbRemoteTransactionsRepositoryInjectedValue;
     }
 
@@ -315,8 +315,12 @@ public class EJBRemoteConnectorService implements Service<EJBRemoteConnectorServ
         return this.serverEnvironment;
     }
 
-    public Injector<RemoteAsyncInvocationCancelStatusService> getAsyncInvocationCancelStatusInjector() {
+    public InjectedValue<RemoteAsyncInvocationCancelStatusService> getAsyncInvocationCancelStatusInjector() {
         return this.remoteAsyncInvocationCancelStatus;
+    }
+
+    public String[] getSupportedMarshallingStrategies() {
+        return supportedMarshallingStrategies;
     }
 
     private boolean isSupportedMarshallingStrategy(final String strategy) {

@@ -965,6 +965,12 @@
                 <artifactId>jboss-as-ejb3</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            
+            <dependency>
+                <groupId>org.jboss.as</groupId>
+                <artifactId>jboss-as-ejb-over-http</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.jboss.as</groupId>
@@ -6405,6 +6411,7 @@
                 <module>webservices</module>
                 <module>weld</module>
                 <module>xts</module>
+                <module>ejb-over-http</module>
                 <module>testsuite/shared</module>
                 <module>testsuite</module>
             </modules>
