@@ -38,6 +38,9 @@ import org.jboss.as.ejb3.remote.http.HttpMessageInputStream;
  */
 public class EjbOverHttpRemoteServlet extends HttpServlet {
 
+    /**
+     *
+     */
     private static final long serialVersionUID = 1L;
 
     private final HttpEJBClientMessageReceiver receiver;
