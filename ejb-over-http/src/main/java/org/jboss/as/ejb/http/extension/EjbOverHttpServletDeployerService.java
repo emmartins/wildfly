@@ -111,6 +111,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
     }
 
     private void prepareWebContainerContext(Host hostContainer) throws Exception {
+        containerContext.init();
         containerContext.setPath(webContext);
         containerContext.addLifecycleListener(new ContextConfig());
         containerContext.setDocBase("");

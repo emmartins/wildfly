@@ -79,7 +79,7 @@ public abstract class AbstractEJBOverHttpTestCase {
         op.get(OP_ADDR).set(getPathAddress().toModelNode());
         ModelNode result = managementClient.getControllerClient().execute(op);
         logger.info("\naddOperation result asString = " + result.asString());
-        // assertTrue("success".equals(result.get("outcome").asString()));
+        assertTrue("success".equals(result.get("outcome").asString()));
     }
 
     @After
@@ -91,7 +91,7 @@ public abstract class AbstractEJBOverHttpTestCase {
         op.get(OP_ADDR).set(getPathAddress().toModelNode());
         ModelNode result = managementClient.getControllerClient().execute(op);
         logger.info("\nremoveOperation result asString = " + result.asString());
-        // Assert.assertFalse(result.get(FAILURE_DESCRIPTION).toString(), result.get(FAILURE_DESCRIPTION).isDefined());
+        Assert.assertFalse(result.get(FAILURE_DESCRIPTION).toString(), result.get(FAILURE_DESCRIPTION).isDefined());
         // restore sys property value
         if (propertyValue != null) {
             System.setProperty(propertyName, propertyValue);

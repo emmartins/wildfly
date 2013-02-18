@@ -65,7 +65,6 @@ class ConnectorResourceDefinition extends SimpleResourceDefinition {
     public void registerOperations(ManagementResourceRegistration resourceRegistration) {
         resourceRegistration.setRuntimeOnly(false);
         super.registerOperations(resourceRegistration);
-        //you can register aditional operations here
     }
 
     @Override

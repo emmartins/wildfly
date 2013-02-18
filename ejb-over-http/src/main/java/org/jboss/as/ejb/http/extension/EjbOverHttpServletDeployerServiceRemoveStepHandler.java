@@ -21,13 +21,37 @@
  */
 package org.jboss.as.ejb.http.extension;
 
+import org.apache.catalina.Context;
 import org.jboss.as.controller.AbstractRemoveStepHandler;
+import org.jboss.as.controller.OperationContext;
+import org.jboss.as.controller.OperationFailedException;
+import org.jboss.dmr.ModelNode;
+import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceTarget;
 
 /**
  * @author sfcoy
  */
 public class EjbOverHttpServletDeployerServiceRemoveStepHandler extends AbstractRemoveStepHandler {
 
-    static final EjbOverHttpServletDeployerServiceRemoveStepHandler INSTANCE = new EjbOverHttpServletDeployerServiceRemoveStepHandler();
+    static final EjbOverHttpServletDeployerServiceRemoveStepHandler INSTANCE
+            = new EjbOverHttpServletDeployerServiceRemoveStepHandler();
 
+    @Override
+    protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
+            throws OperationFailedException {
+
+        ModelNode virtualHostModel
+                = ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.resolveModelAttribute(context, model);
+        final String virtualHost = virtualHostModel.asString();
+
+        ModelNode contextModel
+                = ConnectorResourceDefinition.CONTEXT_ATTR.resolveModelAttribute(context, model);
+        final String webContext = "/" + contextModel.asString();
+
+        final ServiceName serviceName = EjbOverHttpServletDeployerService.SERVICE_NAME.append(webContext);
+        EjbOverHttpLogger.LOGGER.infof("Removing %s", serviceName);
+        context.removeService(EjbOverHttpServletDeployerService.SERVICE_NAME.append(webContext));
+    }
 }
