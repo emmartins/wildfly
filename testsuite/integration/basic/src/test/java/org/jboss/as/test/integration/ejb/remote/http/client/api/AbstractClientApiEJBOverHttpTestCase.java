@@ -59,11 +59,11 @@ public abstract class AbstractClientApiEJBOverHttpTestCase extends AbstractEJBOv
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS", "false");
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",
                 SERVLET_DEPLOYMENT_NAME);
-        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME", APP_NAME);
-        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",
-                MODULE_NAME);
-        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME",
-                DISTINCT_NAME);
+        //properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME", APP_NAME);
+        //properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",
+        //        MODULE_NAME);
+        //properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.DISTINCT_NAME",
+        //        DISTINCT_NAME);
         // create and activate the selector with the custom config
         final EJBClientConfiguration clientConfiguration = new PropertiesBasedEJBClientConfiguration(properties);
         final ConfigBasedEJBClientContextSelector selector = new ConfigBasedEJBClientContextSelector(clientConfiguration);
