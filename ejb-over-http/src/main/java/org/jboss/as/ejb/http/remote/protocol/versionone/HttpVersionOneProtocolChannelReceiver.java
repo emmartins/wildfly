@@ -20,7 +20,7 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.as.ejb3.remote.protocol.versionone;
+package org.jboss.as.ejb.http.remote.protocol.versionone;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
@@ -30,6 +30,12 @@ import org.jboss.as.ejb3.EjbMessages;
 import org.jboss.as.ejb3.deployment.DeploymentRepository;
 import org.jboss.as.ejb3.remote.EJBRemoteTransactionsRepository;
 import org.jboss.as.ejb3.remote.RemoteAsyncInvocationCancelStatusService;
+import org.jboss.as.ejb3.remote.protocol.versionone.ChannelAssociation;
+import org.jboss.as.ejb3.remote.protocol.versionone.InvocationCancellationMessageHandler;
+import org.jboss.as.ejb3.remote.protocol.versionone.MessageHandler;
+import org.jboss.as.ejb3.remote.protocol.versionone.MethodInvocationMessageHandler;
+import org.jboss.as.ejb3.remote.protocol.versionone.SessionOpenRequestHandler;
+import org.jboss.as.ejb3.remote.protocol.versionone.TransactionRequestHandler;
 import org.jboss.marshalling.MarshallerFactory;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.MessageInputStream;

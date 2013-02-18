@@ -21,7 +21,8 @@
  */
 package org.jboss.as.test.integration.ejb.remote.http.client.api.tx;
 
-import javax.transaction.UserTransaction;
+import javax.transaction.TransactionManager;
+import javax.transaction.TransactionSynchronizationRegistry;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
@@ -44,8 +45,14 @@ import org.jboss.shrinkwrap.api.spec.EnterpriseArchive;
 import org.jboss.shrinkwrap.api.spec.JavaArchive;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionManagerImple;
+import com.arjuna.ats.internal.jta.transaction.arjunacore.TransactionSynchronizationRegistryImple;
+import com.arjuna.ats.jta.common.JTAEnvironmentBean;
+import com.arjuna.ats.jta.common.jtaPropertyManager;
 
 /**
  *
@@ -54,7 +61,11 @@ import org.junit.runner.RunWith;
  */
 @RunWith(Arquillian.class)
 @RunAsClient
-public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientApiEJBOverHttpTestCase {
+public class ClientApiXidTransactionEJBOverHttpTestCase extends AbstractClientApiEJBOverHttpTestCase {
+
+    private static TransactionManager txManager;
+
+    private static TransactionSynchronizationRegistry txSyncRegistry;
 
     @Deployment
     public static Archive<?> getDeployment() {
@@ -68,6 +79,17 @@ public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientA
     }
 
     /**
+     * Create and setup the remoting connection
+     *
+     * @throws Exception
+     */
+    @BeforeClass
+    public static void beforeTestClass() throws Exception {
+        // setup the tx manager and tx sync registry
+        instantiateTxManagement();
+    }
+
+    /**
      * Create and setup the EJB client context backed by the remoting receiver
      *
      * @throws Exception
@@ -75,155 +97,145 @@ public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientA
     @Before
     public void before() throws Exception {
         super.before();
-        final EJBClientTransactionContext localUserTxContext = EJBClientTransactionContext.createLocal();
-        // set the tx context
-        EJBClientTransactionContext.setGlobalContext(localUserTxContext);
+        // create a client side tx context
+        final EJBClientTransactionContext txContext = EJBClientTransactionContext.create(txManager, txSyncRegistry);
+        // associate the tx context
+        EJBClientTransactionContext.setGlobalContext(txContext);
+    }
+
+    private static void instantiateTxManagement() {
+        // These system properties are required or else we end up picking up JTS transaction manager,
+        // which is not what we want
+        System.setProperty(JTAEnvironmentBean.class.getSimpleName() + "." + "transactionManagerClassName", TransactionManagerImple.class.getName());
+        System.setProperty(JTAEnvironmentBean.class.getSimpleName() + "." + "transactionSynchronizationRegistryClassName", TransactionSynchronizationRegistryImple.class.getName());
+        txManager = jtaPropertyManager.getJTAEnvironmentBean().getTransactionManager();
+        txSyncRegistry = jtaPropertyManager.getJTAEnvironmentBean().getTransactionSynchronizationRegistry();
     }
 
     /**
-     * Tests a empty begin()/commit()
+     * Tests that a CMT stateless bean method, with Mandatory tx attribute, invocation works as expected
+     * when the transaction is remotely started on the client side using a client side transaction manager
      *
      * @throws Exception
      */
     @Test
-    public void testEmptyTxCommit() throws Exception {
-        final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);
-        userTransaction.begin();
-        userTransaction.commit();
-    }
-
-    /**
-     * Tests a empty begin()/rollback()
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testEmptyTxRollback() throws Exception {
-        final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);
-        userTransaction.begin();
-        userTransaction.rollback();
-    }
-
-    /**
-     * Tests a call to a bean method with a Mandatory tx attribute, by initiating a UserTransaction on the remote client side.
-     * This test ensures that the tx is propagated to the server during the bean invocation
-     *
-     * @throws Exception
-     */
-    @Test
-    public void testMandatoryTxOnSLSB() throws Exception {
-        final StatelessEJBLocator<CMTRemote> cmtRemoteBeanLocator = new StatelessEJBLocator<CMTRemote>(CMTRemote.class,
-                APP_NAME, MODULE_NAME, CMTBean.class.getSimpleName(), "");
+    public void testSLSBMandatoryTx() throws Exception {
+        final StatelessEJBLocator<CMTRemote> cmtRemoteBeanLocator = new StatelessEJBLocator<CMTRemote>(CMTRemote.class, APP_NAME, MODULE_NAME, CMTBean.class.getSimpleName(), "");
         final CMTRemote cmtRemoteBean = EJBClient.createProxy(cmtRemoteBeanLocator);
 
-        final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);
-        userTransaction.begin();
+        // start the transaction
+        txManager.begin();
+        // invoke the bean
         cmtRemoteBean.mandatoryTxOp();
-        userTransaction.commit();
+        // end the tx
+        txManager.commit();
     }
 
+    /**
+     * Tests various transaction scenarios managed on the client side via the client side transaction manager
+     *
+     * @throws Exception
+     */
     @Test
-    public void testBatchOperationsInTx() throws Exception {
-        final StatelessEJBLocator<RemoteBatch> batchBeanLocator = new StatelessEJBLocator<RemoteBatch>(RemoteBatch.class,
-                APP_NAME, MODULE_NAME, BatchCreationBean.class.getSimpleName(), "");
+    public void testClientTransactionManagement() throws Exception {
+        final StatelessEJBLocator<RemoteBatch> batchBeanLocator = new StatelessEJBLocator<RemoteBatch>(RemoteBatch.class, APP_NAME, MODULE_NAME, BatchCreationBean.class.getSimpleName(), "");
         final RemoteBatch batchBean = EJBClient.createProxy(batchBeanLocator);
 
-        final StatelessEJBLocator<BatchRetriever> batchRetrieverLocator = new StatelessEJBLocator<BatchRetriever>(
-                BatchRetriever.class, APP_NAME, MODULE_NAME, BatchFetchingBean.class.getSimpleName(), "");
+        final StatelessEJBLocator<BatchRetriever> batchRetrieverLocator = new StatelessEJBLocator<BatchRetriever>(BatchRetriever.class, APP_NAME, MODULE_NAME, BatchFetchingBean.class.getSimpleName(), "");
         final BatchRetriever batchRetriever = EJBClient.createProxy(batchRetrieverLocator);
 
-        final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);
         final String batchName = "Simple Batch";
         // create a batch
-        userTransaction.begin();
+        txManager.begin();
         try {
             batchBean.createBatch(batchName);
         } catch (Exception e) {
-            userTransaction.rollback();
+            txManager.rollback();
             throw e;
         }
-        userTransaction.commit();
+        txManager.commit();
+
+        // fetch the batch and make sure it contains the right state
+        final Batch batchAfterCreation = batchRetriever.fetchBatch(batchName);
+        Assert.assertNotNull("Batch was null after creation", batchAfterCreation);
+        Assert.assertNull("Unexpected steps in batch, after creation", batchAfterCreation.getStepNames());
 
         // add step1 to the batch
         final String step1 = "Simple step1";
-        userTransaction.begin();
+        txManager.begin();
         try {
             batchBean.step1(batchName, step1);
         } catch (Exception e) {
-            userTransaction.rollback();
+            txManager.rollback();
             throw e;
         }
-        userTransaction.commit();
+        txManager.commit();
 
         String successFullyCompletedSteps = step1;
 
         // fetch the batch and make sure it contains the right state
         final Batch batchAfterStep1 = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after step1 was null", batchAfterStep1);
-        Assert.assertEquals("Unexpected steps in batch, after step1", successFullyCompletedSteps,
-                batchAfterStep1.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after step1", successFullyCompletedSteps, batchAfterStep1.getStepNames());
+
 
         // now add a failing step2
         final String appExceptionStep2 = "App exception Step 2";
-        userTransaction.begin();
+        txManager.begin();
         try {
             batchBean.appExceptionFailingStep2(batchName, appExceptionStep2);
             Assert.fail("Expected a application exception");
         } catch (SimpleAppException sae) {
             // expected
-            userTransaction.rollback();
+            txManager.rollback();
         }
 
         final Batch batchAfterAppExceptionStep2 = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after app exception step2 was null", batchAfterAppExceptionStep2);
-        Assert.assertEquals("Unexpected steps in batch, after app exception step2", successFullyCompletedSteps,
-                batchAfterAppExceptionStep2.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after app exception step2", successFullyCompletedSteps, batchAfterAppExceptionStep2.getStepNames());
 
         // now add a successful step2
         final String step2 = "Simple Step 2";
-        userTransaction.begin();
+        txManager.begin();
         try {
             batchBean.successfulStep2(batchName, step2);
         } catch (Exception e) {
-            userTransaction.rollback();
+            txManager.rollback();
             throw e;
         }
         // don't yet commit and try and retrieve the batch
         final Batch batchAfterStep2BeforeCommit = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after step2, before commit was null", batchAfterStep2BeforeCommit);
-        Assert.assertEquals("Unexpected steps in batch, after step2 before commit", successFullyCompletedSteps,
-                batchAfterStep2BeforeCommit.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after step2 before commit", successFullyCompletedSteps, batchAfterStep2BeforeCommit.getStepNames());
 
         // now commit
-        userTransaction.commit();
+        txManager.commit();
         // keep track of successfully completely steps
         successFullyCompletedSteps = successFullyCompletedSteps + "," + step2;
 
         // now retrieve and check the batch
         final Batch batchAfterStep2 = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after step2 was null", batchAfterStep2);
-        Assert.assertEquals("Unexpected steps in batch, after step2", successFullyCompletedSteps,
-                batchAfterStep2.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after step2", successFullyCompletedSteps, batchAfterStep2.getStepNames());
 
         // now add independent Step3 (i.e. the bean method has a REQUIRES_NEW semantics, so that the
         // client side tx doesn't play a role)
         final String step3 = "Simple Step 3";
-        userTransaction.begin();
+        txManager.begin();
         batchBean.independentStep3(batchName, step3);
         // rollback (but it shouldn't end up rolling back step3 because that was done in server side independent tx)
-        userTransaction.rollback();
+        txManager.rollback();
         // keep track of successfully completely steps
         successFullyCompletedSteps = successFullyCompletedSteps + "," + step3;
 
         // now retrieve and check the batch
         final Batch batchAfterStep3 = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after step3 was null", batchAfterStep3);
-        Assert.assertEquals("Unexpected steps in batch, after step3", successFullyCompletedSteps,
-                batchAfterStep3.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after step3", successFullyCompletedSteps, batchAfterStep3.getStepNames());
 
         // now add step4 but don't commit
         final String step4 = "Simple Step 4";
-        userTransaction.begin();
+        txManager.begin();
         batchBean.step4(batchName, step4);
 
         // now add a system exception throwing step
@@ -232,21 +244,16 @@ public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientA
             batchBean.systemExceptionFailingStep2(batchName, sysExceptionStep2);
             Assert.fail("Expected a system exception");
         } catch (Exception e) {
-            // expected exception
-            // TODO: We currently don't return the tx status from the server to the client, so the
-            // client has no knowledge of the tx status. This is something that can be implemented
-            // by passing along the tx status as a return attachment from a remote method invocation.
-            // For now, let's ignore it
-            // Assert.assertEquals("Unexpected transaction state", Status.STATUS_ROLLEDBACK,
-            // userTransaction.getStatus());
-            userTransaction.rollback();
+            // expected
+            //Assert.assertEquals("Unexpected transaction state", Status.STATUS_ROLLEDBACK, userTransaction.getStatus());
+            txManager.rollback();
         }
 
         // now retrieve and check the batch
         final Batch batchAfterSysException = batchRetriever.fetchBatch(batchName);
         Assert.assertNotNull("Batch after system exception was null", batchAfterSysException);
-        Assert.assertEquals("Unexpected steps in batch, after system exception", successFullyCompletedSteps,
-                batchAfterSysException.getStepNames());
+        Assert.assertEquals("Unexpected steps in batch, after system exception", successFullyCompletedSteps, batchAfterSysException.getStepNames());
+
     }
 
 }

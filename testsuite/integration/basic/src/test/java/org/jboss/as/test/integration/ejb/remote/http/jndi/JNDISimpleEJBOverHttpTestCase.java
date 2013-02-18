@@ -80,8 +80,6 @@ public class JNDISimpleEJBOverHttpTestCase extends AbstractEJBOverHttpTestCase {
         jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS", "false");
         jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",
                 SERVLET_DEPLOYMENT_NAME);
-        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT",
-                "apache");
         jndiProperties
                 .put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME", APP_NAME);
         jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",

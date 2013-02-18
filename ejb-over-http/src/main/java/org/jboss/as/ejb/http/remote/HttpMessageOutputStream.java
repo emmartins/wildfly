@@ -19,7 +19,7 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.as.ejb3.remote.http;
+package org.jboss.as.ejb.http.remote;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -34,9 +34,11 @@ import org.jboss.remoting3.MessageOutputStream;
 public class HttpMessageOutputStream extends MessageOutputStream {
 
     private final OutputStream outputStream;
+    private final HttpChannel channel;
 
-    public HttpMessageOutputStream(final OutputStream outputStream) {
+    public HttpMessageOutputStream(final HttpChannel channel, final OutputStream outputStream) {
         this.outputStream = outputStream;
+        this.channel = channel;
     }
 
     @Override
@@ -47,10 +49,12 @@ public class HttpMessageOutputStream extends MessageOutputStream {
     @Override
     public void close() throws IOException {
         outputStream.close();
+        channel.complete();
     }
 
     @Override
     public MessageOutputStream cancel() {
+        // TODO return error?
         try {
             close();
         } catch (IOException e) {

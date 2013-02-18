@@ -19,18 +19,15 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.as.test.integration.ejb.remote.http.client.api;
+package org.jboss.as.test.integration.ejb.remote.http.client.api.error;
 
 import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.container.test.api.RunAsClient;
 import org.jboss.arquillian.junit.Arquillian;
-import org.jboss.as.test.integration.ejb.remote.http.CounterBean;
-import org.jboss.as.test.integration.ejb.remote.http.CounterRemote;
-import org.jboss.as.test.integration.ejb.remote.http.EchoBean;
-import org.jboss.as.test.integration.ejb.remote.http.EchoRemote;
+import org.jboss.as.test.integration.ejb.remote.http.client.api.AbstractClientApiEJBOverHttpTestCase;
 import org.jboss.ejb.client.EJBClient;
-import org.jboss.ejb.client.StatefulEJBLocator;
 import org.jboss.ejb.client.StatelessEJBLocator;
+import org.jboss.logging.Logger;
 import org.jboss.shrinkwrap.api.Archive;
 import org.jboss.shrinkwrap.api.ShrinkWrap;
 import org.jboss.shrinkwrap.api.asset.EmptyAsset;
@@ -47,7 +44,9 @@ import org.junit.runner.RunWith;
  */
 @RunWith(Arquillian.class)
 @RunAsClient
-public class ClientApiSimpleEJBOverHttpTestCase extends AbstractClientApiEJBOverHttpTestCase {
+public class ClientApiErrorEJBOverHttpTestCase extends AbstractClientApiEJBOverHttpTestCase {
+
+    private static final Logger logger = Logger.getLogger(ClientApiErrorEJBOverHttpTestCase.class);
 
     /**
      * Creates an EJB deployment
@@ -58,7 +57,7 @@ public class ClientApiSimpleEJBOverHttpTestCase extends AbstractClientApiEJBOver
     public static Archive<?> getDeployment() {
         final EnterpriseArchive ear = ShrinkWrap.create(EnterpriseArchive.class, APP_NAME + ".ear");
         final JavaArchive jar = ShrinkWrap.create(JavaArchive.class, MODULE_NAME + ".jar");
-        jar.addClasses(EchoRemote.class, EchoBean.class, CounterRemote.class, CounterBean.class);
+        jar.addClasses(org.jboss.as.test.integration.ejb.remote.http.EchoRemote.class, org.jboss.as.test.integration.ejb.remote.http.EchoBean.class);
         jar.addAsManifestResource(EmptyAsset.INSTANCE, "beans.xml");
         ear.addAsModule(jar);
         return ear;
@@ -66,30 +65,15 @@ public class ClientApiSimpleEJBOverHttpTestCase extends AbstractClientApiEJBOver
 
     @Test
     public void testStateless() throws Exception {
-        // get the ejb proxy
-        final StatelessEJBLocator<EchoRemote> locator = new StatelessEJBLocator<EchoRemote>(EchoRemote.class, APP_NAME,
-                MODULE_NAME, EchoBean.class.getSimpleName(), DISTINCT_NAME);
-        final EchoRemote proxy = EJBClient.createProxy(locator);
-        Assert.assertNotNull("Received a null proxy", proxy);
-        // invoke it
-        final String message = "Hello world from a really remote client";
-        final String echo = proxy.echo(message);
-        Assert.assertEquals("Unexpected echo message", message, echo);
-    }
-
-    @Test
-    public void testStatefull() throws Exception {
-        // get the ejb proxy
-        StatefulEJBLocator<CounterRemote> locator = EJBClient.createSession(CounterRemote.class, APP_NAME, MODULE_NAME,
-                CounterBean.class.getSimpleName(), DISTINCT_NAME);
-        final CounterRemote proxy = EJBClient.createProxy(locator);
-        Assert.assertNotNull("Received a null proxy", proxy);
-        // invoke it
-        int counter = proxy.addAndGet(1);
-        Assert.assertEquals("Unexpected counter value", 1, counter);
-        counter = proxy.addAndGet(1);
-        Assert.assertEquals("Unexpected counter value", 2, counter);
-
+        try {
+            final StatelessEJBLocator<EchoRemote> locator = new StatelessEJBLocator<EchoRemote>(EchoRemote.class, APP_NAME,
+                    MODULE_NAME, EchoBean.class.getSimpleName(), DISTINCT_NAME);
+            final EchoRemote proxy = EJBClient.createProxy(locator);
+            proxy.echo("Hello world from a really remote client");
+            Assert.fail("loookup and invocation of ejb with wrong class should not succeed");
+        } catch (Throwable e) {
+            logger.info("got the expected exception", e);
+        }
     }
 
 }

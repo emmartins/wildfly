@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2011, Red Hat, Inc., and individual contributors
+ * Copyright 2013, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,13 +19,32 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
+package org.jboss.as.ejb.http.remote;
 
-package org.jboss.as.test.integration.ejb.remote.http.client.api.tx;
+import java.io.IOException;
+
+import org.jboss.as.ejb3.remote.protocol.versionone.ChannelAssociation;
+import org.jboss.remoting3.Channel;
+import org.jboss.remoting3.MessageOutputStream;
 
 /**
- * User: jpai
+ *
+ * @author Eduardo Martins
+ *
  */
-public interface CMTRemote {
+public class HttpChannelAssociation extends ChannelAssociation {
 
-    void mandatoryTxOp();
+    public HttpChannelAssociation(Channel channel) {
+        super(channel);
+    }
+
+    @Override
+    public MessageOutputStream acquireChannelMessageOutputStream() throws Exception {
+        return getChannel().writeMessage();
+    }
+
+    @Override
+    public void releaseChannelMessageOutputStream(MessageOutputStream messageOutputStream) throws IOException {
+        messageOutputStream.close();
+    }
 }

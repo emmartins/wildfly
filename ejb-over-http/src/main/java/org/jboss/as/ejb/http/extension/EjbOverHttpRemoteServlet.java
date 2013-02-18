@@ -28,9 +28,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.jboss.as.ejb3.remote.http.HttpChannel;
-import org.jboss.as.ejb3.remote.http.HttpEJBClientMessageReceiver;
-import org.jboss.as.ejb3.remote.http.HttpMessageInputStream;
+import org.jboss.as.ejb.http.remote.HttpChannel;
+import org.jboss.as.ejb.http.remote.HttpEJBClientMessageReceiver;
+import org.jboss.as.ejb.http.remote.HttpMessageInputStream;
 
 /**
  * @author martins

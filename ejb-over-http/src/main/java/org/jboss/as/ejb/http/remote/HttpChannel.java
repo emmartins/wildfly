@@ -19,12 +19,13 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.as.ejb3.remote.http;
+package org.jboss.as.ejb.http.remote;
 
 import java.io.IOException;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
@@ -78,7 +79,7 @@ public class HttpChannel implements Channel {
 
     @Override
     public MessageOutputStream writeMessage() throws IOException {
-        return new HttpMessageOutputStream(asyncContext.getResponse().getOutputStream());
+        return new HttpMessageOutputStream(this,asyncContext.getResponse().getOutputStream());
     }
 
     @Override
@@ -108,6 +109,21 @@ public class HttpChannel implements Channel {
 
     @Override
     public void close() throws IOException {
+        // only invoked on exception
+        final HttpServletResponse response = (HttpServletResponse) asyncContext.getResponse();
+        if (!response.isCommitted()) {
+            try {
+                response.reset();
+                response.sendError(500, "channel closed");
+            } catch (Throwable e) {
+                // FIXME
+                e.printStackTrace();
+            }
+        }
+        complete();
+    }
+
+    public void complete() {
         try {
             asyncContext.complete();
         } catch(Throwable e) {

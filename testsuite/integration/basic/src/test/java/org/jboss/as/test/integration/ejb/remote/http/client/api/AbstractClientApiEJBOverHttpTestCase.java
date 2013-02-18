@@ -39,6 +39,11 @@ import org.junit.Before;
  */
 public abstract class AbstractClientApiEJBOverHttpTestCase extends AbstractEJBOverHttpTestCase {
 
+    private static final String HOST = "localhost";
+    private static final String PORT = "8080";
+
+    public final String NODENAME = "http://" + HOST + ":" + PORT + "/" + SERVLET_DEPLOYMENT_NAME + "/";
+
     private ContextSelector<EJBClientContext> previousSelector;
 
     @Before
@@ -49,12 +54,11 @@ public abstract class AbstractClientApiEJBOverHttpTestCase extends AbstractEJBOv
         properties.put("endpoint.name", "ejb-over-http");
         properties.put("remote.connections", "default");
         properties.put("remote.connection.default.transport", "http");
-        properties.put("remote.connection.default.host", "localhost");
-        properties.put("remote.connection.default.port", "8080");
+        properties.put("remote.connection.default.host", HOST);
+        properties.put("remote.connection.default.port", PORT);
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS", "false");
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",
                 SERVLET_DEPLOYMENT_NAME);
-        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTP_CLIENT", "jdk");
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME", APP_NAME);
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",
                 MODULE_NAME);

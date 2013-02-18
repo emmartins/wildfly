@@ -20,33 +20,13 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.as.test.integration.ejb.remote.http.client.api.tx;
-
-import org.jboss.logging.Logger;
-
-import javax.ejb.Remote;
-import javax.ejb.Stateless;
-import javax.ejb.TransactionAttribute;
-import javax.ejb.TransactionAttributeType;
-import javax.ejb.TransactionManagement;
-import javax.persistence.EntityManager;
-import javax.persistence.PersistenceContext;
+package org.jboss.as.test.integration.ejb.remote.http.client.api.error;
 
 /**
  * User: jpai
  */
-@Stateless
-@TransactionAttribute(value = TransactionAttributeType.REQUIRES_NEW)
-@Remote (BatchRetriever.class)
-public class BatchFetchingBean implements BatchRetriever {
+public interface EchoRemote {
 
-    private static final Logger logger = Logger.getLogger(BatchFetchingBean.class);
+    String echo(String message);
 
-    @PersistenceContext(unitName = "ejb-client-tx-pu")
-    private EntityManager entityManager;
-
-    public Batch fetchBatch(final String batchName) {
-        logger.info("Fetching batch " + batchName);
-        return this.entityManager.find(Batch.class, batchName);
-    }
 }

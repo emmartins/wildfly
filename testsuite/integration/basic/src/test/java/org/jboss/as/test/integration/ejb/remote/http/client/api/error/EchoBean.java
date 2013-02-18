@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
+ * Copyright 2011, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,37 +19,27 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.as.ejb3.remote.http;
 
-import java.io.IOException;
+package org.jboss.as.test.integration.ejb.remote.http.client.api.error;
 
-import org.jboss.as.ejb3.remote.protocol.versionone.ChannelAssociation;
-import org.jboss.remoting3.Channel;
-import org.jboss.remoting3.MessageOutputStream;
+import javax.ejb.Remote;
+import javax.ejb.Stateless;
+
+import org.jboss.logging.Logger;
 
 /**
- *
- * @author Eduardo Martins
- *
+ * User: jpai
  */
-public class HttpChannelAssociation extends ChannelAssociation {
+@Stateless
+@Remote(EchoRemote.class)
+public class EchoBean implements EchoRemote {
 
-    public HttpChannelAssociation(Channel channel) {
-        super(channel);
-    }
-
-    @Override
-    public MessageOutputStream acquireChannelMessageOutputStream() throws Exception {
-        return getChannel().writeMessage();
-    }
+    private static final Logger logger = Logger.getLogger(EchoBean.class);
 
     @Override
-    public void releaseChannelMessageOutputStream(MessageOutputStream messageOutputStream) throws IOException {
-        try {
-            messageOutputStream.close();
-        }
-        finally {
-            getChannel().close();
-        }
+    public String echo(String message) {
+        logger.info(this.getClass().getSimpleName() + " echoing message " + message);
+        return message;
     }
+
 }
