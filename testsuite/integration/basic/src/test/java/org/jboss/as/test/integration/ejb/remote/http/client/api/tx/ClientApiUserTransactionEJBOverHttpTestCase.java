@@ -113,7 +113,7 @@ public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientA
     @Test
     public void testMandatoryTxOnSLSB() throws Exception {
         final StatelessEJBLocator<CMTRemote> cmtRemoteBeanLocator = new StatelessEJBLocator<CMTRemote>(CMTRemote.class,
-                APP_NAME, MODULE_NAME, CMTBean.class.getSimpleName(), "");
+                APP_NAME, MODULE_NAME, CMTBean.class.getSimpleName(), DISTINCT_NAME);
         final CMTRemote cmtRemoteBean = EJBClient.createProxy(cmtRemoteBeanLocator);
 
         final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);
@@ -129,7 +129,7 @@ public class ClientApiUserTransactionEJBOverHttpTestCase extends AbstractClientA
         final RemoteBatch batchBean = EJBClient.createProxy(batchBeanLocator);
 
         final StatelessEJBLocator<BatchRetriever> batchRetrieverLocator = new StatelessEJBLocator<BatchRetriever>(
-                BatchRetriever.class, APP_NAME, MODULE_NAME, BatchFetchingBean.class.getSimpleName(), "");
+                BatchRetriever.class, APP_NAME, MODULE_NAME, BatchFetchingBean.class.getSimpleName(), DISTINCT_NAME);
         final BatchRetriever batchRetriever = EJBClient.createProxy(batchRetrieverLocator);
 
         final UserTransaction userTransaction = EJBClient.getUserTransaction(NODENAME);

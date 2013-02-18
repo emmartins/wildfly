@@ -89,7 +89,7 @@ public class JNDISimpleEJBOverHttpTestCase extends AbstractEJBOverHttpTestCase {
     @Test
     public void testStateless() throws Exception {
         final Context context = setupClient();
-        final EchoRemote proxy = (EchoRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + "" + "/"
+        final EchoRemote proxy = (EchoRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + DISTINCT_NAME + "/"
                 + EchoBean.class.getSimpleName() + "!" + EchoRemote.class.getName());
         Assert.assertNotNull("Received a null proxy", proxy);
         // invoke the bean
@@ -101,7 +101,7 @@ public class JNDISimpleEJBOverHttpTestCase extends AbstractEJBOverHttpTestCase {
     @Test
     public void testStatefull() throws Exception {
         final Context context = setupClient();
-        final CounterRemote proxy = (CounterRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + "" + "/"
+        final CounterRemote proxy = (CounterRemote) context.lookup("ejb:" + APP_NAME + "/" + MODULE_NAME + "/" + DISTINCT_NAME + "/"
                 + CounterBean.class.getSimpleName() + "!" + CounterRemote.class.getName() + "?stateful");
         Assert.assertNotNull("Received a null proxy", proxy);
         // invoke the bean
