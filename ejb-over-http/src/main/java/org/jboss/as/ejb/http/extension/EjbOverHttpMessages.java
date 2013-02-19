@@ -37,7 +37,7 @@ public interface EjbOverHttpMessages {
     @Message(id = 64500, value = "Failed to create EJB-over-HTTP servlet with context %s")
     String createEjbOverHttpServletFailed(String webContext);
 
-    @Message(id = 64501, value = "Failed to start EJB-over-HTTP servlet at context %s")
-    String startEjbOverHttpServletFailed(String webContext);
+    @Message(id = 64501, value = "Failed to start EJB-over-HTTP servlet in virtual host '%s' at context '%s'")
+    String startEjbOverHttpServletFailed(String virtualHostName, String webContext);
 
 }

@@ -51,7 +51,7 @@ public class EjbOverHttpRemoteServlet extends HttpServlet {
 
     public void service(HttpServletRequest request, HttpServletResponse response) throws ServletException,
             IOException {
-        EjbOverHttpLogger.LOGGER.handlingRequestTo(request.getRequestURL());
+        EjbOverHttpLogger.LOGGER.handlingRequestTo(this.getServletName(), request.getRequestURL());
         request.getSession(true);
         response.setContentType("application/octet-stream");
         final AsyncContext asyncContext = request.startAsync();

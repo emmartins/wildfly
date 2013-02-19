@@ -24,6 +24,9 @@ package org.jboss.as.ejb.http.extension;
 import static org.jboss.as.ejb.http.extension.EjbOverHttpLogger.LOGGER;
 import static org.jboss.as.ejb.http.extension.EjbOverHttpMessages.MESSAGES;
 
+import java.lang.reflect.InvocationTargetException;
+import javax.naming.NamingException;
+
 import org.apache.catalina.Context;
 import org.apache.catalina.Host;
 import org.apache.catalina.LifecycleException;
@@ -31,6 +34,7 @@ import org.apache.catalina.Loader;
 import org.apache.catalina.Wrapper;
 import org.apache.catalina.core.StandardContext;
 import org.apache.catalina.startup.ContextConfig;
+import org.apache.tomcat.InstanceManager;
 import org.jboss.as.ejb.http.remote.HttpEJBClientMessageReceiver;
 import org.jboss.as.ejb3.remote.EJBRemoteConnectorService;
 import org.jboss.as.security.plugins.SecurityDomainContext;
@@ -52,7 +56,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
     static final ServiceName SERVICE_NAME = ServiceName.JBOSS.append(EjbOverHttpExtension.SUBSYSTEM_NAME);
 
-    static final String SERVLET_NAME = "ejb-over-http-servlet";
+    static final String SERVLET_NAME_PATTERN = "ejb-over-http-servlet:%s:%s";
 
     private final StandardContext containerContext = new StandardContext();
 
@@ -74,12 +78,16 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
         return virtualHostInjector;
     }
 
-    public InjectedValue<WebServer> getWebServerInjector() {
+    InjectedValue<WebServer> getWebServerInjector() {
         return webServerInjector;
     }
 
     InjectedValue<SecurityDomainContext> getSecurityDomainContextInjector() {
         return securityDomainContextInjector;
+    }
+
+    InjectedValue<EJBRemoteConnectorService> getEjbRemoteConnectorService() {
+        return ejbRemoteConnectorService;
     }
 
     @Override
@@ -89,9 +97,9 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
     @Override
     public synchronized void start(StartContext startContext) throws StartException {
+        Host hostContainer = getVirtualHost();
+        SecurityDomainContext securityDomainContext = securityDomainContextInjector.getOptionalValue();
         try {
-            Host hostContainer = virtualHostInjector.getValue().getHost();
-            SecurityDomainContext securityDomainContext = securityDomainContextInjector.getOptionalValue();
             if (securityDomainContext == null)
                 EjbOverHttpLogger.LOGGER.deployingServlet(webContext, hostContainer.getName());
             else
@@ -103,10 +111,10 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
             throw new StartException(MESSAGES.createEjbOverHttpServletFailed(webContext), e);
         }
         try {
-            LOGGER.startingService(webContext);
+            LOGGER.startingService(hostContainer.getName(), webContext);
             containerContext.start();
         } catch (LifecycleException e) {
-            throw new StartException(MESSAGES.startEjbOverHttpServletFailed(webContext), e);
+            throw new StartException(MESSAGES.startEjbOverHttpServletFailed(hostContainer.getName(), webContext), e);
         }
     }
 
@@ -115,6 +123,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
         containerContext.setPath(webContext);
         containerContext.addLifecycleListener(new ContextConfig());
         containerContext.setDocBase("");
+        containerContext.setInstanceManager(new LocalInstanceManager(this.ejbRemoteConnectorService.getValue()));
 
         final Loader webCtxLoader = prepareWebContextLoader(hostContainer);
         containerContext.setLoader(webCtxLoader);
@@ -122,7 +131,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
         Wrapper servletWrapper = prepareServletWrapper();
         containerContext.addChild(servletWrapper);
 
-        containerContext.addServletMapping("/", SERVLET_NAME);
+        containerContext.addServletMapping("/", servletWrapper.getName());
 
         hostContainer.addChild(containerContext);
         containerContext.create();
@@ -141,7 +150,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
                 ejbRemoteConnectorService.getSupportedMarshallingStrategies());
         final EjbOverHttpRemoteServlet httpEJBRemoteServlet = new EjbOverHttpRemoteServlet(messageReceiver);
         Wrapper servletWrapper = containerContext.createWrapper();
-        servletWrapper.setName("ejb-over-http-servlet");
+        servletWrapper.setName(String.format(SERVLET_NAME_PATTERN, getVirtualHost().getName(), webContext));
         servletWrapper.setServletClass(EjbOverHttpRemoteServlet.class.getName());
         servletWrapper.setServlet(httpEJBRemoteServlet);
         servletWrapper.setAsyncSupported(true);
@@ -150,31 +159,71 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
     @Override
     public synchronized void stop(StopContext context) {
-        LOGGER.stoppingService(webContext);
+        LOGGER.stoppingService(webContext, getVirtualHost().getName());
         stopContainerAndRemoveFromHostSafely();
         destroyContainerSafely();
     }
 
     private void stopContainerAndRemoveFromHostSafely() {
+        Host hostContainer = getVirtualHost();
         try {
-            containerContext.stop();
-            Host hostContainer = virtualHostInjector.getValue().getHost();
             hostContainer.removeChild(containerContext);
+            containerContext.stop();
         } catch (LifecycleException e) {
-            LOGGER.failedToStopCatalinaStandardContext(webContext, e);
+            LOGGER.failedToStopCatalinaStandardContext(webContext, hostContainer.getName(), e);
         }
+    }
+
+    private Host getVirtualHost() {
+        return virtualHostInjector.getValue().getHost();
     }
 
     private void destroyContainerSafely() {
         try {
             containerContext.destroy();
         } catch (Exception e) {
-            LOGGER.failedToDestroyCatalinaStandardContext(webContext, e);
+            LOGGER.failedToDestroyCatalinaStandardContext(webContext, getVirtualHost().getName(), e);
         }
     }
 
-    public InjectedValue<EJBRemoteConnectorService> getEjbRemoteConnectorService() {
-        return ejbRemoteConnectorService;
+    private static class LocalInstanceManager implements InstanceManager {
+
+        private final EJBRemoteConnectorService ejbRemoteConnectorService;
+
+        LocalInstanceManager(EJBRemoteConnectorService ejbRemoteConnectorService) {
+            this.ejbRemoteConnectorService = ejbRemoteConnectorService;
+        }
+
+        @Override
+        public Object newInstance(String className) throws IllegalAccessException, InvocationTargetException, NamingException, InstantiationException, ClassNotFoundException {
+            if(className.equals(EjbOverHttpRemoteServlet.class.getName()) == false) {
+                return Class.forName(className).newInstance();
+            }
+            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getExecutorService().getValue(), ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
+                    ejbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector().getValue(), ejbRemoteConnectorService.getAsyncInvocationCancelStatusInjector().getValue(),
+                    ejbRemoteConnectorService.getSupportedMarshallingStrategies());
+            EjbOverHttpRemoteServlet wccs = new EjbOverHttpRemoteServlet(messageReceiver);
+            return wccs;
+        }
+
+        @Override
+        public Object newInstance(String fqcn, ClassLoader classLoader) throws IllegalAccessException, InvocationTargetException, NamingException, InstantiationException, ClassNotFoundException {
+            return Class.forName(fqcn, false, classLoader).newInstance();
+        }
+
+        @Override
+        public Object newInstance(Class<?> c) throws IllegalAccessException, InvocationTargetException, NamingException, InstantiationException {
+            return c.newInstance();
+        }
+
+        @Override
+        public void newInstance(Object o) throws IllegalAccessException, InvocationTargetException, NamingException {
+            throw new IllegalStateException();
+        }
+
+        @Override
+        public void destroyInstance(Object o) throws IllegalAccessException, InvocationTargetException {
+        }
     }
 
 }

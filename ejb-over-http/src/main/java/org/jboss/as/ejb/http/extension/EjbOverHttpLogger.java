@@ -43,36 +43,36 @@ public interface EjbOverHttpLogger extends BasicLogger {
             .getName());
 
     @LogMessage(level = INFO)
-    @Message(id = 64550, value = "Starting ejb-over-http service at context root: %s")
-    void startingService(String context);
+    @Message(id = 64550, value = "Starting ejb-over-http service  in virtual host '%s' at context root '%s'")
+    void startingService(String virtualHostName, String context);
 
     @LogMessage(level = INFO)
-    @Message(id = 64551, value = "Stopping ejb-over-http service at context root: %s")
-    void stoppingService(String context);
+    @Message(id = 64551, value = "Stopping ejb-over-http service at context root '%s' in virtual host '%s'")
+    void stoppingService(String context, String virtualHostName);
 
     @LogMessage(level = DEBUG)
-    @Message(id = 64552, value = "Handling EJB request at: %s")
-    void handlingRequestTo(StringBuffer requestURL);
+    @Message(id = 64552, value = "Servlet '%s' is handling an EJB request at: %s")
+    void handlingRequestTo(String servletName, StringBuffer requestURL);
 
     @LogMessage(level = ERROR)
-    @Message(id = 64553, value = "Failed to stop web context %s")
-    void failedToStopCatalinaStandardContext(String webContext, @Cause Exception e);
+    @Message(id = 64553, value = "Failed to stop web context '%s' in virtual host '%s'")
+    void failedToStopCatalinaStandardContext(String webContext, String virtualHostName, @Cause Exception e);
 
     @LogMessage(level = ERROR)
-    @Message(id = 64554, value = "Failed to destroy web context %s")
-    void failedToDestroyCatalinaStandardContext(String webContext, @Cause Exception e);
+    @Message(id = 64554, value = "Failed to destroy web context '%s' in virtual host '%s'")
+    void failedToDestroyCatalinaStandardContext(String webContext, String virtualHostName, @Cause Exception e);
 
     @LogMessage(level = INFO)
     @Message(id = 64555, value = "ejb-over-http service is not available")
     void ejbOverHttpServiceNotAvailable();
 
     @LogMessage(level = INFO)
-    @Message(id = 64556, value = "Starting servlet deployment for unsecured context [%s] on virtual host [%s]")
+    @Message(id = 64556, value = "Starting servlet deployment for unsecured context '%s' on virtual host '%s'")
     void deployingServlet(String context, String virtualHost);
 
     @LogMessage(level = INFO)
-    @Message(id = 64557, value = "Starting servlet deployment for context [%s] on virtual host [%s], " +
-            "secured by security domain [%s]")
+    @Message(id = 64557, value = "Starting servlet deployment for context '%s' on virtual host '%s', " +
+            "secured by security domain '%s'")
     void deployingServlet(String context, String virtualHost, String securityDomain);
 
 }
