@@ -119,8 +119,7 @@ public class EJB3RemoteServiceAdd extends AbstractBoottimeAddStepHandler {
         final OptionMap channelCreationOptions = this.getChannelCreationOptions(context);
         // Install the EJB remoting connector service which will listen for client connections on the remoting channel
         // TODO: Externalize (expose via management API if needed) the version and the marshalling strategy
-        final String[] supportedMarshallingStrategies = new String[]{"river"};
-        final EJBRemoteConnectorService ejbRemoteConnectorService = new EJBRemoteConnectorService((byte) 0x01, supportedMarshallingStrategies, remotingServerServiceName, channelCreationOptions);
+        final EJBRemoteConnectorService ejbRemoteConnectorService = new EJBRemoteConnectorService((byte) 0x01, new String[]{"river"}, remotingServerServiceName, channelCreationOptions);
         final ServiceBuilder<EJBRemoteConnectorService> ejbRemoteConnectorServiceBuilder = serviceTarget.addService(EJBRemoteConnectorService.SERVICE_NAME, ejbRemoteConnectorService);
         // add dependency on the Remoting subsystem endpoint
         ejbRemoteConnectorServiceBuilder.addDependency(RemotingServices.SUBSYSTEM_ENDPOINT, Endpoint.class, ejbRemoteConnectorService.getEndpointInjector());
@@ -142,6 +141,7 @@ public class EJB3RemoteServiceAdd extends AbstractBoottimeAddStepHandler {
         final ServiceController ejbRemotingConnectorServiceController = ejbRemoteConnectorServiceBuilder.install();
         // add it to the services to be returned
         services.add(ejbRemotingConnectorServiceController);
+
         return services;
     }
 
