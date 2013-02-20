@@ -2603,7 +2603,7 @@
                                         </group>
                                         <group>
                                             <title>Module org.jboss.as.ejb-over-http</title>
-                                            <packages>org.jboss.as.ejb3.remote.http:org.jboss.as.ejb.http.extension</packages>
+                                            <packages>org.jboss.as.ejb.http.extension:org.jboss.as.ejb.http.remote:org.jboss.as.ejb.http.remote.protocol.versionone</packages>
                                         </group>
                                         <group>
                                             <title>Module org.jboss.as.host-controller</title>
