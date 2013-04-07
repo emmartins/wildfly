@@ -77,26 +77,44 @@ public class ServiceBasedNamingStore implements NamingStore {
             return new NamingContext(EMPTY_NAME, this, null);
         }
         final ServiceName lookupName = buildServiceName(name);
+
         Object obj = lookup(name.toString(), lookupName, dereference);
         if (obj == null) {
-            final ServiceName lower = boundServices.lower(lookupName);
-            if (lower != null && lower.isParentOf(lookupName)) {
-                // Parent might be a reference or a link
-                obj = lookup(name.toString(), lower, dereference);
-                boolean resolveResult = true;
-                if (obj instanceof NamingContext) {
-                    final NamingContext namingContext = (NamingContext) obj;
-                    // resolve only naming contexts different than lower, to avoid infinite loop
-                    if (namingContext.getNamingStore() == this && lower.equals(buildServiceName(namingContext.getPrefix()))) {
-                        resolveResult = false;
+            // let's go backwards due to possible ancestors with links
+            ServiceName parent;
+            ServiceName child = lookupName;
+            boolean parentIsServiceNameBase = false;
+            String nameAsString = null;
+            do {
+                parent = child.getParent();
+                if (parent.equals(serviceNameBase)) {
+                    parentIsServiceNameBase = true;
+                } else {
+                    if (nameAsString == null) {
+                        nameAsString = name.toString();
+                    }
+                    obj = lookup(nameAsString, parent, dereference);
+                    if (obj != null) {
+                        boolean resolveResult = true;
+                        if (obj instanceof NamingContext) {
+                            final NamingContext namingContext = (NamingContext) obj;
+                            // resolve only naming contexts different than ancestors, to avoid infinite loops
+                            if (namingContext.getNamingStore() == this && parent.equals(buildServiceName(namingContext.getPrefix()))) {
+                                resolveResult = false;
+                            }
+                        }
+                        if (resolveResult) {
+                            checkReferenceForContinuation(name, obj);
+                            return new ResolveResult(obj, suffix(parent, lookupName));
+                        }
                     }
                 }
-                if (resolveResult) {
-                    checkReferenceForContinuation(name, obj);
-                    return new ResolveResult(obj, suffix(lower, lookupName));
-                }
+                child = parent;
             }
+            while(!parentIsServiceNameBase);
 
+            // nothing backwards, let's look forward for an "on demand" created context
+            // FIXME once subcontexts are in store, this should be removed
             final ServiceName ceiling = boundServices.ceiling(lookupName);
             if (ceiling != null && lookupName.isParentOf(ceiling)) {
                 if (lookupName.equals(ceiling)) {

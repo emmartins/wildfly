@@ -29,6 +29,7 @@ import java.util.concurrent.TimeUnit;
 import javax.naming.Binding;
 import javax.naming.CompositeName;
 import javax.naming.Context;
+import javax.naming.LinkRef;
 import javax.naming.Name;
 import javax.naming.NameClassPair;
 import javax.naming.NameParser;
@@ -53,6 +54,7 @@ import org.junit.Test;
 
 /**
  * @author John Bailey
+ * @author Eduardo Martins
  */
 public class ServiceBasedNamingStoreTestCase {
 
@@ -414,5 +416,23 @@ public class ServiceBasedNamingStoreTestCase {
             }
         }).install();
         latch.await();
+    }
+
+    @Test
+    public void testLookupResolveResult() throws Exception {
+        final NamingContext baseContext = new NamingContext(store, null);
+        final Object value = new Object();
+        bindObject(ServiceName.JBOSS.append("a1", "b", "c"), value);
+        bindObject(ServiceName.JBOSS.append("a2"), new LinkRef("./a1"));
+        Object obj = baseContext.lookup(new CompositeName("a2/b/c"));
+        assertNotNull(obj);
+        assertEquals(value, obj);
+        obj = ((Context)baseContext.lookup(new CompositeName("a2/b"))).lookup("c");
+        assertNotNull(obj);
+        assertEquals(value, obj);
+        bindObject(ServiceName.JBOSS.append("a2/b"), new NamingContext(new CompositeName("a2/b"),store,null));
+        obj = baseContext.lookup(new CompositeName("a2/b/c"));
+        assertNotNull(obj);
+        assertEquals(value, obj);
     }
 }
