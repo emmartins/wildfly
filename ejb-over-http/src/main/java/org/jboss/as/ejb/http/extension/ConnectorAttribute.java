@@ -25,16 +25,23 @@ package org.jboss.as.ejb.http.extension;
  * EJB over HTTP connector element attributes
  *
  * @author sfcoy
+ * @author martins
  */
 public enum ConnectorAttribute {
 
     UNKNOWN(null),
 
-    CONTEXT("context"),
+    ALLOWED_ROLE_NAMES(ConnectorModel.ALLOWED_ROLE_NAMES_ATTR),
 
-    VIRTUAL_HOST("virtual-host"),
+    CONTEXT_PATH(ConnectorModel.CONTEXT_PATH_ATTR),
 
-    SECURITY_DOMAIN("security-domain");
+    LOGIN_AUTH_METHOD(ConnectorModel.LOGIN_AUTH_METHOD_ATTR),
+
+    LOGIN_REALM_NAME(ConnectorModel.LOGIN_REALM_NAME_ATTR),
+
+    SECURITY_DOMAIN(ConnectorModel.SECURITY_DOMAIN_ATTR),
+
+    VIRTUAL_HOST(ConnectorModel.VIRTUAL_HOST_ATTR);
 
     private final String localName;
 
@@ -47,12 +54,18 @@ public enum ConnectorAttribute {
     }
 
     static ConnectorAttribute forLocalName(String localName) {
-        if (CONTEXT.localName.equals(localName))
-            return CONTEXT;
-        else if (VIRTUAL_HOST.localName.equals(localName))
-            return VIRTUAL_HOST;
+        if (ALLOWED_ROLE_NAMES.localName.equals(localName))
+            return ALLOWED_ROLE_NAMES;
+        else if (CONTEXT_PATH.localName.equals(localName))
+            return CONTEXT_PATH;
+        else if (LOGIN_AUTH_METHOD.localName.equals(localName))
+            return LOGIN_AUTH_METHOD;
+        else if (LOGIN_REALM_NAME.localName.equals(localName))
+            return LOGIN_REALM_NAME;
         else if (SECURITY_DOMAIN.localName.equals(localName))
             return SECURITY_DOMAIN;
+        else if (VIRTUAL_HOST.localName.equals(localName))
+            return VIRTUAL_HOST;
         else
             return UNKNOWN;
     }

@@ -21,8 +21,6 @@
  */
 package org.jboss.as.ejb.http.extension;
 
-import org.jboss.as.controller.PathElement;
-import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.controller.descriptions.StandardResourceDescriptionResolver;
 
 /**

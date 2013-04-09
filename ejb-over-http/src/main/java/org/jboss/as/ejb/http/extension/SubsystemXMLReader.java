@@ -46,6 +46,7 @@ import org.jboss.staxmapper.XMLExtendedStreamReader;
 
 /**
  * @author sfcoy
+ * @author martins
  */
 class SubsystemXMLReader implements XMLElementReader<List<ModelNode>> {
 
@@ -89,15 +90,13 @@ class SubsystemXMLReader implements XMLElementReader<List<ModelNode>> {
 
         if (existingConnectors.contains(connectorSpecification))
             throw duplicateNamedElement(reader, SubsystemElement.CONNECTOR.getLocalName());
-        if (connectorSpecification.getContext() == null)
-            requireAttributes(reader, ConnectorAttribute.CONTEXT.getLocalName());
+        if (connectorSpecification.getContextPath() == null)
+            requireAttributes(reader, ConnectorAttribute.CONTEXT_PATH.getLocalName());
 
         requireNoContent(reader);
 
         ConnectorResourceDefinition.parseAndSetConnectorDefinition(connectorSpecification, addOperation, reader);
-        final PathAddress address
-            = subsystemAddress.append(ConnectorModel.NAME, connectorSpecification.getVirtualHost() + "/" +
-                connectorSpecification.getContext());
+        final PathAddress address = subsystemAddress.append(ConnectorModel.NAME, connectorSpecification.getVirtualHost() + connectorSpecification.getContextPath());
         addOperation.get(OP_ADDR).set(address.toModelNode());
     }
 
@@ -108,18 +107,26 @@ class SubsystemXMLReader implements XMLElementReader<List<ModelNode>> {
             final String attributeValue = reader.getAttributeValue(i);
             final ConnectorAttribute attribute = ConnectorAttribute.forLocalName(reader.getAttributeLocalName(i));
             switch (attribute) {
-                case CONTEXT:
+                case ALLOWED_ROLE_NAMES:
+                    connectorDefinitionBuilder.setAllowedRoleNames(attributeValue);
+                    break;
+                case CONTEXT_PATH:
                     connectorDefinitionBuilder.setContext(attributeValue);
                     break;
-                case VIRTUAL_HOST:
-                    connectorDefinitionBuilder.setVirtualHost(attributeValue);
+                case LOGIN_AUTH_METHOD:
+                    connectorDefinitionBuilder.setLoginAuthMethod(attributeValue);
+                    break;
+                case LOGIN_REALM_NAME:
+                    connectorDefinitionBuilder.setLoginRealmName(attributeValue);
                     break;
                 case SECURITY_DOMAIN:
                     connectorDefinitionBuilder.setSecurityDomain(attributeValue);
                     break;
+                case VIRTUAL_HOST:
+                    connectorDefinitionBuilder.setVirtualHost(attributeValue);
+                    break;
                 case UNKNOWN:
                     throw unexpectedAttribute(reader, i);
-
             }
         }
         return connectorDefinitionBuilder.build();

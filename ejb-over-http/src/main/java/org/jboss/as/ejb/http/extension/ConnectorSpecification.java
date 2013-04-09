@@ -24,32 +24,51 @@ package org.jboss.as.ejb.http.extension;
 /**
  * POJO describing an EJB over HTTP connection, with an associated builder.
  *
- * Each connector must have a unique virtual-host/context combination, so the identity of
+ * Each connector must have a unique virtual-host/context-path combination, so the identity of
  * each instance of this class is defined by these two attributes.
  *
  * @author sfcoy
+ * @author martins
  */
 final class ConnectorSpecification {
-    private final String context;
-    private final String virtualHost;
+
+    private final String allowedRoleNames;
+    private final String contextPath;
+    private final String loginAuthMethod;
+    private final String loginRealmName;
     private final String securityDomain;
+    private final String virtualHost;
 
     static final class Builder {
-        private String context;
-        private String virtualHost;
+
+        private String allowedRoleNames;
+        private String contextPath;
+        private String loginAuthMethod;
+        private String loginRealmName;
         private String securityDomain;
+        private String virtualHost;
 
         Builder() {
             virtualHost = ConnectorModel.DEFAULT_HOST;
         }
 
-        Builder setContext(String context) {
-            this.context = context;
+        Builder setAllowedRoleNames(String allowedRoleNames) {
+            this.allowedRoleNames = allowedRoleNames;
             return this;
         }
 
-        Builder setVirtualHost(String virtualHost) {
-            this.virtualHost = virtualHost;
+        Builder setContext(String contextPath) {
+            this.contextPath = contextPath;
+            return this;
+        }
+
+        Builder setLoginAuthMethod(String loginAuthMethod) {
+            this.loginAuthMethod = loginAuthMethod;
+            return this;
+        }
+
+        Builder setLoginRealmName(String loginRealmName) {
+            this.loginRealmName = loginRealmName;
             return this;
         }
 
@@ -58,27 +77,47 @@ final class ConnectorSpecification {
             return this;
         }
 
+        Builder setVirtualHost(String virtualHost) {
+            this.virtualHost = virtualHost;
+            return this;
+        }
+
         ConnectorSpecification build() {
-            return new ConnectorSpecification(context, virtualHost, securityDomain);
+            return new ConnectorSpecification(allowedRoleNames, contextPath, loginAuthMethod, loginRealmName, securityDomain, virtualHost);
         }
     }
 
-    private ConnectorSpecification(String context, String virtualHost, String securityDomain) {
-        this.context = context;
-        this.virtualHost = virtualHost;
+    private ConnectorSpecification(String allowedRoleNames, String contextPath, String loginAuthMethod, String loginRealmName, String securityDomain, String virtualHost) {
+        this.allowedRoleNames = allowedRoleNames;
+        this.contextPath = contextPath;
+        this.loginAuthMethod = loginAuthMethod;
+        this.loginRealmName = loginRealmName;
         this.securityDomain = securityDomain;
+        this.virtualHost = virtualHost;
     }
 
-    public String getContext() {
-        return context;
+    public String getAllowedRoleNames() {
+        return allowedRoleNames;
     }
 
-    public String getVirtualHost() {
-        return virtualHost;
+    public String getContextPath() {
+        return contextPath;
+    }
+
+    public String getLoginAuthMethod() {
+        return loginAuthMethod;
+    }
+
+    public String getLoginRealmName() {
+        return loginRealmName;
     }
 
     public String getSecurityDomain() {
         return securityDomain;
+    }
+
+    public String getVirtualHost() {
+        return virtualHost;
     }
 
     @Override
@@ -88,7 +127,7 @@ final class ConnectorSpecification {
 
         ConnectorSpecification that = (ConnectorSpecification) o;
 
-        if (!context.equals(that.context)) return false;
+        if (!contextPath.equals(that.contextPath)) return false;
         if (!virtualHost.equals(that.virtualHost)) return false;
 
         return true;
@@ -96,7 +135,7 @@ final class ConnectorSpecification {
 
     @Override
     public int hashCode() {
-        int result = context.hashCode();
+        int result = contextPath.hashCode();
         result = 31 * result + virtualHost.hashCode();
         return result;
     }

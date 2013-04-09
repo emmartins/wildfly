@@ -22,6 +22,9 @@
 package org.jboss.as.ejb.http.extension;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.security.Principal;
+
 import javax.servlet.AsyncContext;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
@@ -49,15 +52,44 @@ public class EjbOverHttpRemoteServlet extends HttpServlet {
         this.receiver = receiver;
     }
 
-    public void service(HttpServletRequest request, HttpServletResponse response) throws ServletException,
+    @Override
+    protected void service(HttpServletRequest request, HttpServletResponse response) throws ServletException,
             IOException {
+
         EjbOverHttpLogger.LOGGER.handlingRequestTo(this.getServletName(), request.getRequestURL());
+
         request.getSession(true);
         response.setContentType("application/octet-stream");
         final AsyncContext asyncContext = request.startAsync();
         final HttpChannel httpChannel = new HttpChannel(asyncContext);
         final HttpMessageInputStream httpMessageInputStream = new HttpMessageInputStream(asyncContext.getRequest().getInputStream());
         receiver.handleMessage(httpChannel, httpMessageInputStream);
+
+        /*
+        PrintWriter writer = response.getWriter();
+        Principal principal = null;
+        String authType = null;
+        String remoteUser = null;
+
+        // Get security principal
+        principal = request.getUserPrincipal();
+        // Get user name from login principal
+        remoteUser = request.getRemoteUser();
+        // Get authentication type
+        authType = request.getAuthType();
+
+        writer.println(PAGE_HEADER);
+        writer.println("<h1>" + "Successfully called Secured EJB " + "</h1>");
+        writer.println("<p>" + "Principal  : " + principal + "</p>");
+        writer.println("<p>" + "Remote User : " + remoteUser + "</p>");
+        writer.println("<p>" + "Authentication Type : " + authType + "</p>");
+        writer.println(PAGE_FOOTER);
+        writer.close();
+        */
     }
+
+    private static String PAGE_HEADER = "<html><head><title>ejb-security</title></head><body>";
+
+    private static String PAGE_FOOTER = "</body></html>";
 
 }

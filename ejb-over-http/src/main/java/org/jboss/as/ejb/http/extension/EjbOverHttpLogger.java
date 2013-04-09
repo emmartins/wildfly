@@ -21,8 +21,8 @@
  */
 package org.jboss.as.ejb.http.extension;
 
-import static org.jboss.logging.Logger.Level.DEBUG;
 import static org.jboss.logging.Logger.Level.ERROR;
+import static org.jboss.logging.Logger.Level.DEBUG;
 import static org.jboss.logging.Logger.Level.INFO;
 
 import org.jboss.logging.BasicLogger;
@@ -67,12 +67,7 @@ public interface EjbOverHttpLogger extends BasicLogger {
     void ejbOverHttpServiceNotAvailable();
 
     @LogMessage(level = INFO)
-    @Message(id = 64556, value = "Starting servlet deployment for unsecured context '%s' on virtual host '%s'")
+    @Message(id = 64556, value = "Starting servlet deployment for context '%s' on virtual host '%s'")
     void deployingServlet(String context, String virtualHost);
-
-    @LogMessage(level = INFO)
-    @Message(id = 64557, value = "Starting servlet deployment for context '%s' on virtual host '%s', " +
-            "secured by security domain '%s'")
-    void deployingServlet(String context, String virtualHost, String securityDomain);
 
 }

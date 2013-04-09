@@ -62,14 +62,14 @@ public class SubsystemParsingTestCase extends AbstractSubsystemTest {
 
         //Check that each operation has the correct content
         assertSubsystemAddOperation(operations.get(0));
-        assertConnectorAddOperation(operations.get(1), ConnectorModel.DEFAULT_HOST, "ejbs", "other");
-        assertConnectorAddOperation(operations.get(2), ConnectorModel.DEFAULT_HOST, "ejbs2");
-        assertConnectorAddOperation(operations.get(3), "myhost", "ejbs2");
+        assertConnectorAddOperation(operations.get(1), ConnectorModel.DEFAULT_HOST, "/ejbs", "other");
+        assertConnectorAddOperation(operations.get(2), ConnectorModel.DEFAULT_HOST, "/ejbs2");
+        assertConnectorAddOperation(operations.get(3), "myhost", "/ejbs2");
 
     }
 
     private void assertConnectorAddOperation(ModelNode addConnectorOperation, String expectedVirtualHost,
-                                             String expectedContext, String ... expectedSecurityDomain) {
+                                             String expectedPathContext, String ... expectedSecurityDomain) {
         Assert.assertEquals(ADD, addConnectorOperation.get(OP).asString());
         PathAddress pathAddress = PathAddress.pathAddress(addConnectorOperation.get(OP_ADDR));
         Assert.assertEquals(2, pathAddress.size());
@@ -80,13 +80,13 @@ public class SubsystemParsingTestCase extends AbstractSubsystemTest {
 
         PathElement connectorPathElement = pathAddress.getElement(1);
         Assert.assertEquals(ConnectorModel.NAME, connectorPathElement.getKey());
-        Assert.assertEquals(expectedVirtualHost + "/" + expectedContext, connectorPathElement.getValue());
+        Assert.assertEquals(expectedVirtualHost + expectedPathContext, connectorPathElement.getValue());
 
         ModelNode virtualHost = addConnectorOperation.get(ConnectorModel.VIRTUAL_HOST_ATTR);
         Assert.assertEquals(expectedVirtualHost, virtualHost.asString());
 
-        ModelNode context = addConnectorOperation.get(ConnectorModel.CONTEXT_ATTR);
-        Assert.assertEquals(expectedContext, context.asString());
+        ModelNode context = addConnectorOperation.get(ConnectorModel.CONTEXT_PATH_ATTR);
+        Assert.assertEquals(expectedPathContext, context.asString());
 
         if (expectedSecurityDomain.length > 0) {
             ModelNode securityDomain = addConnectorOperation.get(ConnectorModel.SECURITY_DOMAIN_ATTR);

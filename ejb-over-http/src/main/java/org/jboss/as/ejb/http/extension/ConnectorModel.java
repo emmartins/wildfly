@@ -26,18 +26,25 @@ import org.jboss.dmr.ModelNode;
 /**
  * Attributes used by the connector {@link org.jboss.dmr.ModelNode}s
  * @author sfcoy
+ * @author martins
  */
 public final class ConnectorModel {
 
     public static final String NAME = "connector";
 
-    public static final String CONTEXT_ATTR = "context";
+    public static final String ALLOWED_ROLE_NAMES_ATTR = "allowed-role-names";
 
-    public static final String VIRTUAL_HOST_ATTR = "virtual-host";
+    public static final String CONTEXT_PATH_ATTR = "context-path";
+
+    public static final String DEFAULT_HOST = "default-host";
+
+    public static final String LOGIN_AUTH_METHOD_ATTR = "login-auth-method";
+
+    public static final String LOGIN_REALM_NAME_ATTR = "login-realm-name";
 
     public static final String SECURITY_DOMAIN_ATTR = "security-domain";
 
-    public static final String DEFAULT_HOST = "default-host";
+    public static final String VIRTUAL_HOST_ATTR = "virtual-host";
 
     public static final ModelNode DEFAULT_VIRTUAL_HOST = new ModelNode(DEFAULT_HOST);
 

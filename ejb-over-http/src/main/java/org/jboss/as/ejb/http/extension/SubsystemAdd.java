@@ -24,7 +24,6 @@ package org.jboss.as.ejb.http.extension;
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.dmr.ModelNode;
-import org.jboss.logging.Logger;
 
 /**
  * Handler responsible for adding the subsystem resource to the model
@@ -34,8 +33,6 @@ import org.jboss.logging.Logger;
 class SubsystemAdd extends AbstractAddStepHandler {
 
     static final SubsystemAdd INSTANCE = new SubsystemAdd();
-
-    private final Logger log = Logger.getLogger(SubsystemAdd.class);
 
     private SubsystemAdd() {
     }

@@ -25,22 +25,32 @@ import static org.jboss.as.ejb.http.extension.EjbOverHttpLogger.LOGGER;
 import static org.jboss.as.ejb.http.extension.EjbOverHttpMessages.MESSAGES;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
+import java.util.Map;
+
 import javax.naming.NamingException;
+import javax.servlet.HttpConstraintElement;
+import javax.servlet.ServletSecurityElement;
+import javax.servlet.annotation.ServletSecurity.TransportGuarantee;
 
 import org.apache.catalina.Context;
 import org.apache.catalina.Host;
 import org.apache.catalina.LifecycleException;
 import org.apache.catalina.Loader;
+import org.apache.catalina.Realm;
+import org.apache.catalina.Valve;
 import org.apache.catalina.Wrapper;
 import org.apache.catalina.core.StandardContext;
-import org.apache.catalina.startup.ContextConfig;
+import org.apache.catalina.deploy.LoginConfig;
 import org.apache.tomcat.InstanceManager;
+import org.apache.tomcat.util.IntrospectionUtils;
 import org.jboss.as.ejb.http.remote.HttpEJBClientMessageReceiver;
 import org.jboss.as.ejb3.remote.EJBRemoteConnectorService;
-import org.jboss.as.security.plugins.SecurityDomainContext;
+import org.jboss.as.web.AuthenticatorValve;
 import org.jboss.as.web.VirtualHost;
-import org.jboss.as.web.WebServer;
+import org.jboss.as.web.WebServerService;
 import org.jboss.as.web.deployment.WebCtxLoader;
+import org.jboss.as.web.security.SecurityContextAssociationValve;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.StartContext;
@@ -58,32 +68,35 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
     static final String SERVLET_NAME_PATTERN = "ejb-over-http-servlet:%s:%s";
 
-    private final StandardContext containerContext = new StandardContext();
+    private final StandardContext context = new StandardContext();
 
     private final InjectedValue<EJBRemoteConnectorService> ejbRemoteConnectorService = new InjectedValue<EJBRemoteConnectorService>();
     private final InjectedValue<VirtualHost> virtualHostInjector = new InjectedValue<VirtualHost>();
-    private final InjectedValue<WebServer> webServerInjector = new InjectedValue<WebServer>();
-    private final InjectedValue<SecurityDomainContext> securityDomainContextInjector = new InjectedValue<SecurityDomainContext>();
+    private final InjectedValue<WebServerService> webServerInjector = new InjectedValue<WebServerService>();
+    private final InjectedValue<Realm> realmInjector = new InjectedValue<Realm>();
 
-    private final String webContext;
+    private final String allowedRoleNames;
+    private final String contextPath;
+    private final LoginConfig loginConfig;
+    private final String securityDomain;
 
-    private final String securityRealm;
-
-    EjbOverHttpServletDeployerService(String webContext, String securityRealm) {
-        this.webContext = webContext;
-        this.securityRealm = securityRealm;
+    EjbOverHttpServletDeployerService(String allowedRoleNames, String contextPath, LoginConfig loginConfig, String securityDomain) {
+        this.allowedRoleNames = allowedRoleNames;
+        this.contextPath = contextPath;
+        this.loginConfig = loginConfig;
+        this.securityDomain = securityDomain;
     }
 
     InjectedValue<VirtualHost> getVirtualHostInjector() {
         return virtualHostInjector;
     }
 
-    InjectedValue<WebServer> getWebServerInjector() {
+    InjectedValue<WebServerService> getWebServerInjector() {
         return webServerInjector;
     }
 
-    InjectedValue<SecurityDomainContext> getSecurityDomainContextInjector() {
-        return securityDomainContextInjector;
+    InjectedValue<Realm> getRealmInjector() {
+        return realmInjector;
     }
 
     InjectedValue<EJBRemoteConnectorService> getEjbRemoteConnectorService() {
@@ -92,97 +105,136 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
     @Override
     public synchronized Context getValue() throws IllegalStateException, IllegalArgumentException {
-        return containerContext;
+        return context;
     }
 
     @Override
     public synchronized void start(StartContext startContext) throws StartException {
-        Host hostContainer = getVirtualHost();
-        SecurityDomainContext securityDomainContext = securityDomainContextInjector.getOptionalValue();
+
+        final Host host = getVirtualHostInjector().getValue().getHost();
+        EjbOverHttpLogger.LOGGER.deployingServlet(contextPath, host.getName());
+
         try {
-            if (securityDomainContext == null)
-                EjbOverHttpLogger.LOGGER.deployingServlet(webContext, hostContainer.getName());
-            else
-                EjbOverHttpLogger.LOGGER.deployingServlet(webContext, hostContainer.getName(),
-                        securityDomainContext.getAuthenticationManager().getSecurityDomain());
-            prepareWebContainerContext(hostContainer);
+
+            if (securityDomain != null) {
+                context.addValve(new SecurityContextAssociationValve(securityDomain, host.getName()+contextPath, null));
+            }
+            context.addLifecycleListener(new ContextConfig(webServerInjector.getValue()));
+            context.setPath(contextPath);
+            context.setDocBase("");
+            context.setInstanceManager(new LocalInstanceManager(this.ejbRemoteConnectorService.getValue()));
+            final Loader webCtxLoader = new WebCtxLoader(this.getClass().getClassLoader());
+            webCtxLoader.setContainer(host);
+            context.setLoader(webCtxLoader);
+
+            // setup the servlet
+            final EJBRemoteConnectorService ejbRemoteConnectorService = this.ejbRemoteConnectorService.getValue();
+            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getExecutorService().getValue(), ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
+                    ejbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector().getValue(), ejbRemoteConnectorService.getAsyncInvocationCancelStatusInjector().getValue(),
+                    ejbRemoteConnectorService.getSupportedMarshallingStrategies());
+            final EjbOverHttpRemoteServlet httpEJBRemoteServlet = new EjbOverHttpRemoteServlet(messageReceiver);
+            Wrapper servletWrapper = context.createWrapper();
+            servletWrapper.setName(String.format(SERVLET_NAME_PATTERN, host.getName(), contextPath));
+            servletWrapper.setServletClass(EjbOverHttpRemoteServlet.class.getName());
+            servletWrapper.setServlet(httpEJBRemoteServlet);
+            servletWrapper.setAsyncSupported(true);
+            context.addChild(servletWrapper);
+            context.addServletMapping("/", servletWrapper.getName());
+
+            if (allowedRoleNames != null) {
+                for(String roleName : allowedRoleNames.split(",")) {
+                    context.addSecurityRole(roleName);
+                }
+                HttpConstraintElement hce = new HttpConstraintElement(TransportGuarantee.NONE,"*");
+                ServletSecurityElement sse = new ServletSecurityElement(hce);
+                servletWrapper.setServletSecurity(sse);
+            }
+            final Realm realm = realmInjector.getOptionalValue();
+            if (realm != null) {
+                context.setRealm(realm);
+            }
+            if(loginConfig != null) {
+                context.setLoginConfig(loginConfig);
+            }
+
+            host.addChild(context);
+            context.create();
 
         } catch (Exception e) {
-            throw new StartException(MESSAGES.createEjbOverHttpServletFailed(webContext), e);
+            throw new StartException(MESSAGES.createEjbOverHttpServletFailed(contextPath), e);
         }
+
         try {
-            LOGGER.startingService(hostContainer.getName(), webContext);
-            containerContext.start();
+            LOGGER.startingService(host.getName(), contextPath);
+            context.start();
         } catch (LifecycleException e) {
-            throw new StartException(MESSAGES.startEjbOverHttpServletFailed(hostContainer.getName(), webContext), e);
+            throw new StartException(MESSAGES.startEjbOverHttpServletFailed(host.getName(), contextPath), e);
         }
     }
 
-    private void prepareWebContainerContext(Host hostContainer) throws Exception {
-        containerContext.init();
-        containerContext.setPath(webContext);
-        containerContext.addLifecycleListener(new ContextConfig());
-        containerContext.setDocBase("");
-        containerContext.setInstanceManager(new LocalInstanceManager(this.ejbRemoteConnectorService.getValue()));
+    private static class ContextConfig extends org.apache.catalina.startup.ContextConfig {
 
-        final Loader webCtxLoader = prepareWebContextLoader(hostContainer);
-        containerContext.setLoader(webCtxLoader);
+        final WebServerService webServerService;
 
-        Wrapper servletWrapper = prepareServletWrapper();
-        containerContext.addChild(servletWrapper);
+        public ContextConfig(WebServerService webServerService) {
+            this.webServerService = webServerService;
+        }
 
-        containerContext.addServletMapping("/", servletWrapper.getName());
+        protected void completeConfig() {
 
-        hostContainer.addChild(containerContext);
-        containerContext.create();
-    }
+            super.completeConfig();
+            super.resolveServletSecurity();
+            super.validateSecurityRoles();
 
-    private Loader prepareWebContextLoader(Host hostContainer) {
-        final Loader webCtxLoader = new WebCtxLoader(this.getClass().getClassLoader());
-        webCtxLoader.setContainer(hostContainer);
-        return webCtxLoader;
-    }
+            // Configure configure global authenticators.
+            if (ok) {
+                Map<String, AuthenticatorValve> authenValves = webServerService.getAuthenValves();
+                if (!authenValves.isEmpty()) {
+                    Map<String, Valve> authenvalves = new HashMap<String, Valve>();
+                    for (String name : authenValves.keySet()) {
+                        // Instantiate valve and add properties.
+                        AuthenticatorValve authenvalve = (AuthenticatorValve) authenValves.get(name);
+                        Valve valve = null;
+                        try {
+                            valve = (Valve) authenvalve.classz.newInstance();
+                        } catch (InstantiationException e) {
+                            ok = false;
+                            break;
+                        } catch (IllegalAccessException e) {
+                            ok = false;
+                            break;
+                        }
+                        if (authenvalve.properties != null) {
+                            for (String pro: authenvalve.properties.keySet()) {
+                                IntrospectionUtils.setProperty(valve, pro, authenvalve.properties.get(pro));
+                            }
+                        }
+                        authenvalves.put(name, valve);
+                    }
+                    if (ok) {
+                        setCustomAuthenticators(authenvalves);
+                    }
+                }
+            }
 
-    private Wrapper prepareServletWrapper() {
-        final EJBRemoteConnectorService ejbRemoteConnectorService = this.ejbRemoteConnectorService.getValue();
-        final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getExecutorService().getValue(), ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
-                ejbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector().getValue(), ejbRemoteConnectorService.getAsyncInvocationCancelStatusInjector().getValue(),
-                ejbRemoteConnectorService.getSupportedMarshallingStrategies());
-        final EjbOverHttpRemoteServlet httpEJBRemoteServlet = new EjbOverHttpRemoteServlet(messageReceiver);
-        Wrapper servletWrapper = containerContext.createWrapper();
-        servletWrapper.setName(String.format(SERVLET_NAME_PATTERN, getVirtualHost().getName(), webContext));
-        servletWrapper.setServletClass(EjbOverHttpRemoteServlet.class.getName());
-        servletWrapper.setServlet(httpEJBRemoteServlet);
-        servletWrapper.setAsyncSupported(true);
-        return servletWrapper;
+            super.authenticatorConfig();
+        }
     }
 
     @Override
-    public synchronized void stop(StopContext context) {
-        LOGGER.stoppingService(webContext, getVirtualHost().getName());
-        stopContainerAndRemoveFromHostSafely();
-        destroyContainerSafely();
-    }
-
-    private void stopContainerAndRemoveFromHostSafely() {
-        Host hostContainer = getVirtualHost();
+    public synchronized void stop(StopContext stopContext) {
+        final Host host = getVirtualHostInjector().getValue().getHost();
+        LOGGER.stoppingService(contextPath, host.getName());
         try {
-            hostContainer.removeChild(containerContext);
-            containerContext.stop();
+            host.removeChild(context);
+            context.stop();
         } catch (LifecycleException e) {
-            LOGGER.failedToStopCatalinaStandardContext(webContext, hostContainer.getName(), e);
+            LOGGER.failedToStopCatalinaStandardContext(contextPath, host.getName(), e);
         }
-    }
-
-    private Host getVirtualHost() {
-        return virtualHostInjector.getValue().getHost();
-    }
-
-    private void destroyContainerSafely() {
         try {
-            containerContext.destroy();
+            context.destroy();
         } catch (Exception e) {
-            LOGGER.failedToDestroyCatalinaStandardContext(webContext, getVirtualHost().getName(), e);
+            LOGGER.failedToDestroyCatalinaStandardContext(contextPath, host.getName(), e);
         }
     }
 

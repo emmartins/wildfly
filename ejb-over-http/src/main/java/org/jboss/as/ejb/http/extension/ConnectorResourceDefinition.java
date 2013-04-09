@@ -36,23 +36,33 @@ import org.jboss.staxmapper.XMLExtendedStreamReader;
 
 /**
  * @author sfcoy
+ * @author martins
  */
 class ConnectorResourceDefinition extends SimpleResourceDefinition {
 
-    static final SimpleAttributeDefinition VIRTUAL_HOST_ATTR = createAttributeWithDefault(ConnectorModel.VIRTUAL_HOST_ATTR,
-            ConnectorAttribute.VIRTUAL_HOST.getLocalName(), ConnectorModel.DEFAULT_VIRTUAL_HOST);
+    static final SimpleAttributeDefinition ALLOWED_ROLE_NAMES_ATTR = createNullableAttribute(ConnectorModel.ALLOWED_ROLE_NAMES_ATTR,
+            ConnectorAttribute.ALLOWED_ROLE_NAMES.getLocalName());
 
-    static final SimpleAttributeDefinition CONTEXT_ATTR = createAttribute(ConnectorModel.CONTEXT_ATTR,
-            ConnectorAttribute.CONTEXT.getLocalName());
+    static final SimpleAttributeDefinition CONTEXT_PATH_ATTR = createAttribute(ConnectorModel.CONTEXT_PATH_ATTR,
+            ConnectorAttribute.CONTEXT_PATH.getLocalName());
+
+    static final SimpleAttributeDefinition LOGIN_AUTH_METHOD_ATTR = createNullableAttribute(ConnectorModel
+            .LOGIN_AUTH_METHOD_ATTR, ConnectorAttribute.LOGIN_AUTH_METHOD.getLocalName());
+
+    static final SimpleAttributeDefinition LOGIN_REALM_NAME_ATTR = createNullableAttribute(ConnectorModel
+            .LOGIN_REALM_NAME_ATTR, ConnectorAttribute.LOGIN_REALM_NAME.getLocalName());
 
     static final SimpleAttributeDefinition SECURITY_DOMAIN_ATTR = createNullableAttribute(ConnectorModel
             .SECURITY_DOMAIN_ATTR, ConnectorAttribute.SECURITY_DOMAIN.getLocalName());
+
+    static final SimpleAttributeDefinition VIRTUAL_HOST_ATTR = createAttributeWithDefault(ConnectorModel.VIRTUAL_HOST_ATTR,
+            ConnectorAttribute.VIRTUAL_HOST.getLocalName(), ConnectorModel.DEFAULT_VIRTUAL_HOST);
 
     private static final PathElement CONNECTOR_PATH = PathElement.pathElement(ConnectorModel.NAME);
 
     static final ConnectorResourceDefinition INSTANCE = new ConnectorResourceDefinition();
 
-    private static final AttributeDefinition[] attributes = {VIRTUAL_HOST_ATTR, CONTEXT_ATTR, SECURITY_DOMAIN_ATTR};
+    private static final AttributeDefinition[] attributes = {ALLOWED_ROLE_NAMES_ATTR, CONTEXT_PATH_ATTR, LOGIN_AUTH_METHOD_ATTR, LOGIN_REALM_NAME_ATTR, SECURITY_DOMAIN_ATTR, VIRTUAL_HOST_ATTR};
 
     private ConnectorResourceDefinition() {
         super(CONNECTOR_PATH,
@@ -69,8 +79,8 @@ class ConnectorResourceDefinition extends SimpleResourceDefinition {
 
     @Override
     public void registerAttributes(ManagementResourceRegistration resourceRegistration) {
-        ReloadRequiredWriteAttributeHandler reloadRequiredWriteAttributeHandler = new ReloadRequiredWriteAttributeHandler(this.attributes);
-        for (AttributeDefinition attr : this.attributes) {
+        ReloadRequiredWriteAttributeHandler reloadRequiredWriteAttributeHandler = new ReloadRequiredWriteAttributeHandler(attributes);
+        for (AttributeDefinition attr : attributes) {
             resourceRegistration.registerReadWriteAttribute(attr, null, reloadRequiredWriteAttributeHandler);
             // resist the temptation to replace the null above with a ReadAttributeHandler. Strange and ugly things
             // happen.
@@ -79,10 +89,20 @@ class ConnectorResourceDefinition extends SimpleResourceDefinition {
 
     static void parseAndSetConnectorDefinition(ConnectorSpecification connectorSpecification, ModelNode addOperation,
                                                XMLExtendedStreamReader reader) throws XMLStreamException {
-        VIRTUAL_HOST_ATTR.parseAndSetParameter(connectorSpecification.getVirtualHost(), addOperation, reader);
-        CONTEXT_ATTR.parseAndSetParameter(connectorSpecification.getContext(), addOperation, reader);
-        if (connectorSpecification.getSecurityDomain() != null)
+        if (connectorSpecification.getAllowedRoleNames() != null) {
+            ALLOWED_ROLE_NAMES_ATTR.parseAndSetParameter(connectorSpecification.getAllowedRoleNames(), addOperation, reader);
+        }
+        CONTEXT_PATH_ATTR.parseAndSetParameter(connectorSpecification.getContextPath(), addOperation, reader);
+        if (connectorSpecification.getLoginAuthMethod() != null) {
+            LOGIN_AUTH_METHOD_ATTR.parseAndSetParameter(connectorSpecification.getLoginAuthMethod(), addOperation, reader);
+        }
+        if (connectorSpecification.getLoginRealmName() != null) {
+            LOGIN_REALM_NAME_ATTR.parseAndSetParameter(connectorSpecification.getLoginRealmName(), addOperation, reader);
+        }
+        if (connectorSpecification.getSecurityDomain() != null) {
             SECURITY_DOMAIN_ATTR.parseAndSetParameter(connectorSpecification.getSecurityDomain(), addOperation, reader);
+        }
+        VIRTUAL_HOST_ATTR.parseAndSetParameter(connectorSpecification.getVirtualHost(), addOperation, reader);
     }
 
     private static SimpleAttributeDefinition createAttributeWithDefault(String name, String xmlLocalName,

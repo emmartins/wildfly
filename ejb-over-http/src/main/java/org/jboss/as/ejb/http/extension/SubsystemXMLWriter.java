@@ -21,37 +21,17 @@
  */
 package org.jboss.as.ejb.http.extension;
 
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
-import static org.jboss.as.controller.parsing.ParseUtils.duplicateAttribute;
-import static org.jboss.as.controller.parsing.ParseUtils.duplicateNamedElement;
-import static org.jboss.as.controller.parsing.ParseUtils.requireAttributes;
-import static org.jboss.as.controller.parsing.ParseUtils.requireNoAttributes;
-import static org.jboss.as.controller.parsing.ParseUtils.requireNoContent;
-import static org.jboss.as.controller.parsing.ParseUtils.requireNoNamespaceAttribute;
-import static org.jboss.as.controller.parsing.ParseUtils.unexpectedAttribute;
-import static org.jboss.as.controller.parsing.ParseUtils.unexpectedElement;
-
-import java.util.EnumSet;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 
-import org.jboss.as.controller.PathAddress;
-import org.jboss.as.controller.operations.common.Util;
 import org.jboss.as.controller.persistence.SubsystemMarshallingContext;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.Property;
-import org.jboss.staxmapper.XMLElementReader;
 import org.jboss.staxmapper.XMLElementWriter;
-import org.jboss.staxmapper.XMLExtendedStreamReader;
 import org.jboss.staxmapper.XMLExtendedStreamWriter;
 
 /**
  * @author sfcoy
+ * @author martins
  */
 class SubsystemXMLWriter implements XMLElementWriter<SubsystemMarshallingContext> {
 
@@ -75,9 +55,12 @@ class SubsystemXMLWriter implements XMLElementWriter<SubsystemMarshallingContext
     private static void writeConnectorElement(XMLExtendedStreamWriter writer, ModelNode connectorModel) throws
             XMLStreamException {
         writer.writeStartElement(SubsystemElement.CONNECTOR.getLocalName());
-        ConnectorResourceDefinition.CONTEXT_ATTR.marshallAsAttribute(connectorModel, writer);
-        ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.marshallAsAttribute(connectorModel, false, writer);
+        ConnectorResourceDefinition.ALLOWED_ROLE_NAMES_ATTR.marshallAsAttribute(connectorModel, false, writer);
+        ConnectorResourceDefinition.CONTEXT_PATH_ATTR.marshallAsAttribute(connectorModel, writer);
+        ConnectorResourceDefinition.LOGIN_AUTH_METHOD_ATTR.marshallAsAttribute(connectorModel, false, writer);
+        ConnectorResourceDefinition.LOGIN_REALM_NAME_ATTR.marshallAsAttribute(connectorModel, false, writer);
         ConnectorResourceDefinition.SECURITY_DOMAIN_ATTR.marshallAsAttribute(connectorModel, false, writer);
+        ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.marshallAsAttribute(connectorModel, false, writer);
         writer.writeEndElement();
     }
 

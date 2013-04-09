@@ -63,7 +63,8 @@ public class JBossWebRealmService implements Service<Realm> {
         jbossWebRealm.setAuthorizationManager(sdc.getAuthorizationManager());
         jbossWebRealm.setMappingManager(sdc.getMappingManager());
         jbossWebRealm.setAuditManager(sdc.getAuditManager());
-        jbossWebRealm.setDeploymentUnit(deploymentUnit);
+        if (deploymentUnit != null)
+            jbossWebRealm.setDeploymentUnit(deploymentUnit);
         this.realm = jbossWebRealm;
         try {
             // Register the active request PolicyContextHandler

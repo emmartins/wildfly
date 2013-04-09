@@ -78,8 +78,8 @@ public class JNDISimpleEJBOverHttpTestCase extends AbstractEJBOverHttpTestCase {
         jndiProperties.put("remote.connection.default.host", "localhost");
         jndiProperties.put("remote.connection.default.port", "8080");
         jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS", "false");
-        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",
-                SERVLET_DEPLOYMENT_NAME);
+        jndiProperties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.CONTEXT_PATH",
+                CONTEXT_PATH);
         // without this property the client won't setup the client with the jndi env properties
         jndiProperties.put("org.jboss.ejb.client.scoped.context", "true");
         // create context and lookup bean proxy

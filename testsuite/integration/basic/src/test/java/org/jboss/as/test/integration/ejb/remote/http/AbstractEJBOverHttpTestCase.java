@@ -54,7 +54,7 @@ public abstract class AbstractEJBOverHttpTestCase {
     public static final String APP_NAME = "ejb-remote-client-api-test";
     public static final String MODULE_NAME = "ejb";
     public static final String DISTINCT_NAME = "";
-    public static final String SERVLET_DEPLOYMENT_NAME = "ejb3-remote";
+    public static final String CONTEXT_PATH = "/ejb3-remote";
 
     private final static String propertyName = "jboss.ejb.client.properties.skip.classloader.scan";
     private String propertyValue;
@@ -64,7 +64,7 @@ public abstract class AbstractEJBOverHttpTestCase {
 
     private PathAddress getPathAddress() {
         final PathAddress subsystemAddress = PathAddress.pathAddress(SubsystemResourceDefinition.SUBSYSTEM_PATH);
-        return subsystemAddress.append(ConnectorModel.NAME, ConnectorModel.DEFAULT_HOST + "/" + SERVLET_DEPLOYMENT_NAME);
+        return subsystemAddress.append(ConnectorModel.NAME, ConnectorModel.DEFAULT_HOST + CONTEXT_PATH);
     }
 
     @Before
@@ -75,7 +75,7 @@ public abstract class AbstractEJBOverHttpTestCase {
         // add connector
         final ModelNode op = new ModelNode();
         op.get(OP).set(ADD);
-        op.get(ConnectorModel.CONTEXT_ATTR).set(SERVLET_DEPLOYMENT_NAME);
+        op.get(ConnectorModel.CONTEXT_PATH_ATTR).set(CONTEXT_PATH);
         op.get(OP_ADDR).set(getPathAddress().toModelNode());
         ModelNode result = managementClient.getControllerClient().execute(op);
         logger.info("\naddOperation result asString = " + result.asString());

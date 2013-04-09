@@ -25,13 +25,13 @@ import org.apache.catalina.Context;
 import org.jboss.as.controller.AbstractRemoveStepHandler;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
+import org.jboss.as.web.WebSubsystemServices;
 import org.jboss.dmr.ModelNode;
-import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
 
 /**
  * @author sfcoy
+ * @author martins
  */
 public class EjbOverHttpServletDeployerServiceRemoveStepHandler extends AbstractRemoveStepHandler {
 
@@ -39,19 +39,24 @@ public class EjbOverHttpServletDeployerServiceRemoveStepHandler extends Abstract
             = new EjbOverHttpServletDeployerServiceRemoveStepHandler();
 
     @Override
-    protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model)
+    protected void performRuntime(OperationContext operationContext, ModelNode operation, ModelNode model)
             throws OperationFailedException {
 
-        ModelNode virtualHostModel
-                = ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.resolveModelAttribute(context, model);
+        ModelNode contextModel
+                = ConnectorResourceDefinition.CONTEXT_PATH_ATTR.resolveModelAttribute(operationContext, model);
+        final String contextPath = contextModel.asString();
+
+        ModelNode virtualHostModel = ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.resolveModelAttribute(operationContext, model);
         final String virtualHost = virtualHostModel.asString();
 
-        ModelNode contextModel
-                = ConnectorResourceDefinition.CONTEXT_ATTR.resolveModelAttribute(context, model);
-        final String webContext = "/" + contextModel.asString();
+        final ServiceName ejbOverHttpServletDeployerServiceName = EjbOverHttpServletDeployerService.SERVICE_NAME.append(virtualHost, contextPath);
+        EjbOverHttpLogger.LOGGER.infof("Removing %s", ejbOverHttpServletDeployerServiceName);
+        final Context context = (Context) operationContext.removeService(ejbOverHttpServletDeployerServiceName).getValue();
+        if (context.getRealm() != null) {
+            final ServiceName realmServiceName = WebSubsystemServices.deploymentServiceName(virtualHost, contextPath).append("realm");
+            EjbOverHttpLogger.LOGGER.infof("Removing %s", realmServiceName);
+            operationContext.removeService(realmServiceName);
+        }
 
-        final ServiceName serviceName = EjbOverHttpServletDeployerService.SERVICE_NAME.append(webContext);
-        EjbOverHttpLogger.LOGGER.infof("Removing %s", serviceName);
-        context.removeService(EjbOverHttpServletDeployerService.SERVICE_NAME.append(webContext));
     }
 }

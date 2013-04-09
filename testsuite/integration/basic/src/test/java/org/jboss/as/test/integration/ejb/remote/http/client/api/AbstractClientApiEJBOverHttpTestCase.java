@@ -42,7 +42,7 @@ public abstract class AbstractClientApiEJBOverHttpTestCase extends AbstractEJBOv
     private static final String HOST = "localhost";
     private static final String PORT = "8080";
 
-    public final String NODENAME = "http://" + HOST + ":" + PORT + "/" + SERVLET_DEPLOYMENT_NAME + "/";
+    public final String NODENAME = "http://" + HOST + ":" + PORT + CONTEXT_PATH + "/";
 
     private ContextSelector<EJBClientContext> previousSelector;
 
@@ -57,8 +57,8 @@ public abstract class AbstractClientApiEJBOverHttpTestCase extends AbstractEJBOv
         properties.put("remote.connection.default.host", HOST);
         properties.put("remote.connection.default.port", PORT);
         properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.HTTPS", "false");
-        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.SERVLET_NAME",
-                SERVLET_DEPLOYMENT_NAME);
+        properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.CONTEXT_PATH",
+                CONTEXT_PATH);
         //properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.APP_NAME", APP_NAME);
         //properties.put("remote.connection.default.connect.options.org.jboss.ejb.client.http.HttpOptions.MODULE_NAME",
         //        MODULE_NAME);

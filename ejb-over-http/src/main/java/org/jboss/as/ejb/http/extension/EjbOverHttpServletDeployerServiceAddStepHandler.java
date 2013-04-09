@@ -26,6 +26,8 @@ import static org.jboss.as.ejb.http.extension.EjbOverHttpLogger.LOGGER;
 import java.util.List;
 
 import org.apache.catalina.Context;
+import org.apache.catalina.Realm;
+import org.apache.catalina.deploy.LoginConfig;
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
@@ -35,14 +37,18 @@ import org.jboss.as.ejb3.remote.EJBRemoteConnectorService;
 import org.jboss.as.security.plugins.SecurityDomainContext;
 import org.jboss.as.security.service.SecurityDomainService;
 import org.jboss.as.web.VirtualHost;
-import org.jboss.as.web.WebServer;
+import org.jboss.as.web.WebServerService;
 import org.jboss.as.web.WebSubsystemServices;
+import org.jboss.as.web.security.JBossWebRealmService;
 import org.jboss.dmr.ModelNode;
 import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.msc.service.ServiceBuilder.DependencyType;
 import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceName;
 
 /**
  * @author sfcoy
+ * @author martins
  */
 public class EjbOverHttpServletDeployerServiceAddStepHandler extends AbstractAddStepHandler {
 
@@ -50,61 +56,86 @@ public class EjbOverHttpServletDeployerServiceAddStepHandler extends AbstractAdd
 
     @Override
     protected void populateModel(ModelNode operation, ModelNode model) throws OperationFailedException {
-        ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.validateAndSet(operation, model);
-        ConnectorResourceDefinition.CONTEXT_ATTR.validateAndSet(operation, model);
+        ConnectorResourceDefinition.ALLOWED_ROLE_NAMES_ATTR.validateAndSet(operation, model);
+        ConnectorResourceDefinition.CONTEXT_PATH_ATTR.validateAndSet(operation, model);
+        ConnectorResourceDefinition.LOGIN_AUTH_METHOD_ATTR.validateAndSet(operation, model);
+        ConnectorResourceDefinition.LOGIN_REALM_NAME_ATTR.validateAndSet(operation, model);
         ConnectorResourceDefinition.SECURITY_DOMAIN_ATTR.validateAndSet(operation, model);
+        ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.validateAndSet(operation, model);
     }
 
     @Override
-    protected void performRuntime(OperationContext context, ModelNode operation, ModelNode model,
+    protected void performRuntime(OperationContext operationContext, ModelNode operation, ModelNode model,
                                   final ServiceVerificationHandler verificationHandler,
                                   final List<ServiceController<?>> newControllers) throws OperationFailedException {
-        if (context.isNormalServer()) {
+        if (operationContext.isNormalServer()) {
 
-            ModelNode virtualHostModel
-                    = ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.resolveModelAttribute(context, model);
+            ModelNode allowedRoleNamesModel = ConnectorResourceDefinition.ALLOWED_ROLE_NAMES_ATTR.resolveModelAttribute(operationContext, model);
+            final String allowedRoleNames = allowedRoleNamesModel.isDefined() ? allowedRoleNamesModel.asString() : null;
+
+            ModelNode contextPathModel = ConnectorResourceDefinition.CONTEXT_PATH_ATTR.resolveModelAttribute(operationContext, model);
+            final String contextPath = contextPathModel.asString();
+
+            ModelNode loginAuthMethodModel = ConnectorResourceDefinition.LOGIN_AUTH_METHOD_ATTR.resolveModelAttribute(operationContext, model);
+            final String loginAuthMethod = loginAuthMethodModel.isDefined() ? loginAuthMethodModel.asString() : null;
+
+            ModelNode loginRealmNameModel = ConnectorResourceDefinition.LOGIN_REALM_NAME_ATTR.resolveModelAttribute(operationContext, model);
+            final String loginRealmName = loginRealmNameModel.isDefined() ? loginRealmNameModel.asString() : null;
+
+            ModelNode securityDomainModel = ConnectorResourceDefinition.SECURITY_DOMAIN_ATTR.resolveModelAttribute(operationContext, model);
+            final String securityDomain = securityDomainModel.isDefined() ? securityDomainModel.asString() : null;
+
+            ModelNode virtualHostModel = ConnectorResourceDefinition.VIRTUAL_HOST_ATTR.resolveModelAttribute(operationContext, model);
             final String virtualHost = virtualHostModel.asString();
 
-            ModelNode contextModel
-                    = ConnectorResourceDefinition.CONTEXT_ATTR.resolveModelAttribute(context, model);
-            final String webContext = "/" + contextModel.asString();
+            final LoginConfig loginConfig;
+            if (loginAuthMethod !=null && loginRealmName != null) {
+                loginConfig = new LoginConfig();
+                loginConfig.setAuthMethod(loginAuthMethod);
+                loginConfig.setRealmName(loginRealmName);
+            } else {
+                loginConfig = null;
+            }
 
-            ModelNode securityRealmModel
-                    = ConnectorResourceDefinition.SECURITY_DOMAIN_ATTR.resolveModelAttribute(context, model);
-            final String securityRealm = securityRealmModel.isDefined() ? securityRealmModel.asString() : null;
-
-            context.addStep(new OperationStepHandler() {
+            operationContext.addStep(new OperationStepHandler() {
 
                 @Override
-                public void execute(OperationContext context, ModelNode operation) {
+                public void execute(OperationContext operationContext, ModelNode operation) {
 
-                    final EjbOverHttpServletDeployerService ejbOverHttpContextService = new EjbOverHttpServletDeployerService(webContext,
-                            securityRealm);
+                    final ServiceName realmServiceName;
+                    if (securityDomain != null) {
+                        // to use servlet auth a realm msc service is needed
+                        realmServiceName = WebSubsystemServices.deploymentServiceName(virtualHost, contextPath).append("realm");
+                        final JBossWebRealmService realmService = new JBossWebRealmService(null);
+                        final ServiceBuilder<Realm> realmServiceBuilder = operationContext.getServiceTarget().addService(realmServiceName, realmService)
+                                .addDependency(DependencyType.REQUIRED, SecurityDomainService.SERVICE_NAME.append(securityDomain), SecurityDomainContext.class,
+                                        realmService.getSecurityDomainContextInjector());
+                        newControllers.add(realmServiceBuilder.addListener(verificationHandler)
+                                .setInitialMode(ServiceController.Mode.ACTIVE)
+                                .install());
+                    } else {
+                        realmServiceName = null;
+                    }
 
-                    context.getServiceTarget().addService(WebSubsystemServices.JBOSS_WEB.append
-                            (EjbOverHttpExtension.SUBSYSTEM_NAME).append(webContext), ejbOverHttpContextService);
-
-
+                    final EjbOverHttpServletDeployerService ejbOverHttpContextService = new EjbOverHttpServletDeployerService(allowedRoleNames, contextPath, loginConfig, securityDomain);
                     ServiceBuilder<Context> ejbOverHttpServletDeployerServiceServiceBuilder =
-                            context.getServiceTarget().addService(EjbOverHttpServletDeployerService.SERVICE_NAME.append(webContext), ejbOverHttpContextService);
+                            operationContext.getServiceTarget().addService(EjbOverHttpServletDeployerService.SERVICE_NAME.append(virtualHost, contextPath), ejbOverHttpContextService);
                     ejbOverHttpServletDeployerServiceServiceBuilder.addDependency(EJBRemoteConnectorService.SERVICE_NAME, EJBRemoteConnectorService.class, ejbOverHttpContextService.getEjbRemoteConnectorService())
                     .addDependency(WebSubsystemServices.JBOSS_WEB_HOST.append(virtualHost), VirtualHost.class,
                             ejbOverHttpContextService.getVirtualHostInjector())
-                    .addDependency(WebSubsystemServices.JBOSS_WEB, WebServer.class,
+                    .addDependency(WebSubsystemServices.JBOSS_WEB, WebServerService.class,
                                     ejbOverHttpContextService.getWebServerInjector());
-
-                    if (securityRealm != null)
-                        ejbOverHttpServletDeployerServiceServiceBuilder.addDependency(SecurityDomainService.SERVICE_NAME.append(securityRealm), SecurityDomainContext.class,
-                                ejbOverHttpContextService.getSecurityDomainContextInjector());
-
+                    if (realmServiceName != null) {
+                        ejbOverHttpServletDeployerServiceServiceBuilder.addDependency(realmServiceName, Realm.class, ejbOverHttpContextService.getRealmInjector());
+                    }
                     newControllers.add(ejbOverHttpServletDeployerServiceServiceBuilder.addListener(verificationHandler)
                             .setInitialMode(ServiceController.Mode.ACTIVE)
                             .install());
-                    context.completeStep(OperationContext.RollbackHandler.NOOP_ROLLBACK_HANDLER);
+                    operationContext.completeStep(OperationContext.RollbackHandler.NOOP_ROLLBACK_HANDLER);
                 }
             }, OperationContext.Stage.RUNTIME);
 
-            context.stepCompleted();
+            operationContext.stepCompleted();
         } else
             LOGGER.ejbOverHttpServiceNotAvailable();
     }
