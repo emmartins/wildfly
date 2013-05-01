@@ -46,16 +46,16 @@ import org.xnio.IoUtils;
  */
 public class HttpEJBClientMessageReceiver implements Channel.Receiver {
 
-    private final ExecutorService executorService;
+    private static final ExecutorService EXECUTOR_SERVICE = new SynchronousExecutorService();
+
     private final DeploymentRepository deploymentRepository;
     private final EJBRemoteTransactionsRepository ejbRemoteTransactionsRepository;
     private final RemoteAsyncInvocationCancelStatusService asyncInvocationCancelStatus;
     private final String[] supportedMarshallingStrategies;
 
-    public HttpEJBClientMessageReceiver(ExecutorService executorService, DeploymentRepository deploymentRepository,
+    public HttpEJBClientMessageReceiver(DeploymentRepository deploymentRepository,
             EJBRemoteTransactionsRepository ejbRemoteTransactionsRepository,
             RemoteAsyncInvocationCancelStatusService asyncInvocationCancelStatus, String[] supportedMarshallingStrategies) {
-        this.executorService = executorService;
         this.deploymentRepository = deploymentRepository;
         this.ejbRemoteTransactionsRepository = ejbRemoteTransactionsRepository;
         this.asyncInvocationCancelStatus = asyncInvocationCancelStatus;
@@ -85,7 +85,7 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
     @Override
     public void handleMessage(Channel channel, MessageInputStream messageInputStream) {
 
-        EjbLogger.ROOT_LOGGER.info("HttpEJBClientMessageReceiver:handleMessage()");
+        EjbLogger.ROOT_LOGGER.trace("HttpEJBClientMessageReceiver:handleMessage()");
         final ChannelAssociation channelAssociation = new HttpChannelAssociation(channel);
         final DataInputStream dataInputStream = new DataInputStream(messageInputStream);
         try {
@@ -104,8 +104,9 @@ public class HttpEJBClientMessageReceiver implements Channel.Receiver {
                     // enroll VersionOneProtocolChannelReceiver for handling subsequent messages on this channel
                     final HttpVersionOneProtocolChannelReceiver receiver = new HttpVersionOneProtocolChannelReceiver(
                             channelAssociation, deploymentRepository, ejbRemoteTransactionsRepository, marshallerFactory,
-                            executorService, asyncInvocationCancelStatus);
-                    // ask msg handling, instead of start receiving in remoting one TODO rethink common api, perhaps factory of protocol receiver?
+                            EXECUTOR_SERVICE, asyncInvocationCancelStatus);
+                    // ask msg handling, instead of start receiving in remoting one TODO rethink common api, perhaps factory of
+                    // protocol receiver?
                     // receiver.startReceiving();
                     receiver.handleMessage(channel, messageInputStream);
                     break;

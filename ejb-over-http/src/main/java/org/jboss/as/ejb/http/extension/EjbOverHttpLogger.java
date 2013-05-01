@@ -70,4 +70,7 @@ public interface EjbOverHttpLogger extends BasicLogger {
     @Message(id = 64556, value = "Starting servlet deployment for context '%s' on virtual host '%s'")
     void deployingServlet(String context, String virtualHost);
 
+    @LogMessage(level = DEBUG)
+    @Message(id = 64557, value = "Failed to reset response and send error to client")
+    void failedToResetAndSendErrorToClient(@Cause Throwable cause);
 }

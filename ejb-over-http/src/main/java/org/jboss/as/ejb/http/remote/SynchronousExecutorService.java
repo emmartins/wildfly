@@ -21,47 +21,53 @@
  */
 package org.jboss.as.ejb.http.remote;
 
-import java.io.IOException;
-import java.io.OutputStream;
-
-import org.jboss.remoting3.MessageOutputStream;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.AbstractExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * An executor service which provides synchronous execution on the invoking thread, to be used at
+ * {@link HttpEJBClientMessageReceiver}, such as security context from invoking servlet gets propagated properly.
  *
  * @author Eduardo Martins
  *
  */
-public class HttpMessageOutputStream extends MessageOutputStream {
+public class SynchronousExecutorService extends AbstractExecutorService {
 
-    private final OutputStream outputStream;
+    private AtomicBoolean shutdown = new AtomicBoolean(false);
 
-    public HttpMessageOutputStream(final OutputStream outputStream) {
-        this.outputStream = outputStream;
+    @Override
+    public void shutdown() {
+        shutdown.set(true);
     }
 
     @Override
-    public void flush() throws IOException {
-        outputStream.flush();
+    public List<Runnable> shutdownNow() {
+        shutdown();
+        return Collections.emptyList();
     }
 
     @Override
-    public void close() throws IOException {
-        outputStream.close();
+    public boolean isShutdown() {
+        return shutdown.get();
     }
 
     @Override
-    public MessageOutputStream cancel() {
-        try {
-            close();
-        } catch (IOException e) {
-            // ignore
-        }
-        return this;
+    public boolean isTerminated() {
+        return isShutdown();
     }
 
     @Override
-    public void write(int b) throws IOException {
-        outputStream.write(b);
+    public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+        shutdown();
+        return true;
+    }
+
+    @Override
+    public void execute(Runnable command) {
+        command.run();
     }
 
 }

@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
+ * Copyright 2011, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -19,49 +19,28 @@
  * Software Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
-package org.jboss.as.ejb.http.remote;
 
-import java.io.IOException;
-import java.io.OutputStream;
+package org.jboss.as.test.integration.ejb.remote.http.client.api.security;
 
-import org.jboss.remoting3.MessageOutputStream;
+import javax.annotation.security.RolesAllowed;
+import javax.ejb.Remote;
+import javax.ejb.Stateless;
 
-/**
- *
- * @author Eduardo Martins
- *
- */
-public class HttpMessageOutputStream extends MessageOutputStream {
+import org.jboss.ejb3.annotation.SecurityDomain;
+import org.jboss.logging.Logger;
 
-    private final OutputStream outputStream;
+@Stateless
+@RolesAllowed({ "Users" })
+@SecurityDomain("other")
+@Remote(SecuredEchoRemote.class)
+public class SecuredEchoBean implements SecuredEchoRemote {
 
-    public HttpMessageOutputStream(final OutputStream outputStream) {
-        this.outputStream = outputStream;
-    }
+    private static final Logger logger = Logger.getLogger(SecuredEchoBean.class);
 
     @Override
-    public void flush() throws IOException {
-        outputStream.flush();
-    }
-
-    @Override
-    public void close() throws IOException {
-        outputStream.close();
-    }
-
-    @Override
-    public MessageOutputStream cancel() {
-        try {
-            close();
-        } catch (IOException e) {
-            // ignore
-        }
-        return this;
-    }
-
-    @Override
-    public void write(int b) throws IOException {
-        outputStream.write(b);
+    public String echo(String message) {
+        logger.info(this.getClass().getSimpleName() + " echoing message " + message);
+        return message;
     }
 
 }

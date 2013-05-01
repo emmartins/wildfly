@@ -129,7 +129,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
 
             // setup the servlet
             final EJBRemoteConnectorService ejbRemoteConnectorService = this.ejbRemoteConnectorService.getValue();
-            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getExecutorService().getValue(), ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
+            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
                     ejbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector().getValue(), ejbRemoteConnectorService.getAsyncInvocationCancelStatusInjector().getValue(),
                     ejbRemoteConnectorService.getSupportedMarshallingStrategies());
             final EjbOverHttpRemoteServlet httpEJBRemoteServlet = new EjbOverHttpRemoteServlet(messageReceiver);
@@ -251,7 +251,7 @@ class EjbOverHttpServletDeployerService implements Service<Context> {
             if(className.equals(EjbOverHttpRemoteServlet.class.getName()) == false) {
                 return Class.forName(className).newInstance();
             }
-            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getExecutorService().getValue(), ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
+            final HttpEJBClientMessageReceiver messageReceiver = new HttpEJBClientMessageReceiver(ejbRemoteConnectorService.getDeploymentRepositoryInjector().getValue(),
                     ejbRemoteConnectorService.getEJBRemoteTransactionsRepositoryInjector().getValue(), ejbRemoteConnectorService.getAsyncInvocationCancelStatusInjector().getValue(),
                     ejbRemoteConnectorService.getSupportedMarshallingStrategies());
             EjbOverHttpRemoteServlet wccs = new EjbOverHttpRemoteServlet(messageReceiver);

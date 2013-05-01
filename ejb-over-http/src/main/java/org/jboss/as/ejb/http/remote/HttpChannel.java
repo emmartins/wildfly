@@ -23,10 +23,9 @@ package org.jboss.as.ejb.http.remote;
 
 import java.io.IOException;
 
-import javax.servlet.AsyncContext;
-import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.jboss.as.ejb.http.extension.EjbOverHttpLogger;
 import org.jboss.remoting3.Attachments;
 import org.jboss.remoting3.Channel;
 import org.jboss.remoting3.CloseHandler;
@@ -41,10 +40,10 @@ import org.xnio.Option;
  */
 public class HttpChannel implements Channel {
 
-    private final AsyncContext asyncContext;
+    private final HttpServletResponse response;
 
-    public HttpChannel(AsyncContext asyncContext) {
-        this.asyncContext = asyncContext;
+    public HttpChannel(HttpServletResponse response) {
+        this.response = response;
     }
 
     @Override
@@ -74,12 +73,13 @@ public class HttpChannel implements Channel {
 
     @Override
     public Connection getConnection() {
-        return new HttpConnection((HttpServletRequest) asyncContext.getRequest());
+        // null connection means security context is propagated from servlet
+        return null;
     }
 
     @Override
     public MessageOutputStream writeMessage() throws IOException {
-        return new HttpMessageOutputStream(this,asyncContext.getResponse().getOutputStream());
+        return new HttpMessageOutputStream(response.getOutputStream());
     }
 
     @Override
@@ -89,7 +89,7 @@ public class HttpChannel implements Channel {
 
     @Override
     public void receiveMessage(Receiver handler) {
-       // ignore, this channel is used only once by a handler
+        // ignore, this channel is used only once by a handler
     }
 
     @Override
@@ -110,24 +110,13 @@ public class HttpChannel implements Channel {
     @Override
     public void close() throws IOException {
         // only invoked on exception
-        final HttpServletResponse response = (HttpServletResponse) asyncContext.getResponse();
         if (!response.isCommitted()) {
             try {
                 response.reset();
                 response.sendError(500, "channel closed");
             } catch (Throwable e) {
-                // FIXME
-                e.printStackTrace();
+                EjbOverHttpLogger.LOGGER.failedToResetAndSendErrorToClient(e);
             }
-        }
-        complete();
-    }
-
-    public void complete() {
-        try {
-            asyncContext.complete();
-        } catch(Throwable e) {
-            // ignore
         }
     }
 

@@ -91,9 +91,11 @@ public class SecurityContextAssociationValve extends ValveBase {
             securityDomain = SecurityConstants.DEFAULT_WEB_APPLICATION_POLICY;
         }
         this.securityDomain = securityDomain;
-        this.runAsIdentity = runAsIdentity;
         if(runAsIdentity == null) {
-            runAsIdentity = new HashMap<String,RunAsIdentityMetaData>();
+            this.runAsIdentity = new HashMap<String,RunAsIdentityMetaData>();
+        }
+        else {
+            this.runAsIdentity = runAsIdentity;
         }
         this.contextId = contextId;
     }
