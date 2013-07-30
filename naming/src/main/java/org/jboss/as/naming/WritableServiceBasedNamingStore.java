@@ -32,6 +32,7 @@ import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.NamingException;
 
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.service.BinderService;
 import org.jboss.as.naming.util.ThreadLocalStack;
 import org.jboss.msc.service.ServiceBuilder;
@@ -146,6 +147,9 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
         if (owner == null) {
             throw MESSAGES.readOnlyNamingContext();
         }
+        if (owner == NOT_DEPLOYMENT_OWNER) {
+            return null;
+        }
         return owner;
     }
 
@@ -157,4 +161,14 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
         WRITE_OWNER.pop();
     }
 
+    // special owner to be used when binding without a EE deployment in context (modules or non-EE components)
+
+    private static final ServiceName NOT_DEPLOYMENT_OWNER = ContextNames.NAMING;
+
+    /**
+     *
+     */
+    public static void pushNotDeploymentOwner() {
+        WRITE_OWNER.push(NOT_DEPLOYMENT_OWNER);
+    }
 }

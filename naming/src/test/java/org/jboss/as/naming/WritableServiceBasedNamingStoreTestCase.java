@@ -154,6 +154,19 @@ public class WritableServiceBasedNamingStoreTestCase {
     }
 
     @Test
+    public void testBindNotDeploymentOwner() throws Exception {
+        final Name name = new CompositeName("test");
+        final Object value = new Object();
+        WritableServiceBasedNamingStore.pushNotDeploymentOwner();
+        try {
+            store.bind(name, value);
+        } finally {
+            WritableServiceBasedNamingStore.popOwner();
+        }
+        assertEquals(value, store.lookup(name));
+    }
+
+    @Test
     public void testBindNested() throws Exception {
         final Name name = new CompositeName("nested/test");
         final Object value = new Object();
@@ -190,6 +203,24 @@ public class WritableServiceBasedNamingStoreTestCase {
             store.unbind(new CompositeName("test"));
             fail("Should have failed with a read-only context exception");
         } catch (UnsupportedOperationException expected) {
+        }
+    }
+
+    @Test
+    public void testUnbindNotDeploymentOwner() throws Exception {
+        final Name name = new CompositeName("test");
+        final Object value = new Object();
+        WritableServiceBasedNamingStore.pushNotDeploymentOwner();
+        try {
+            store.bind(name, value);
+            store.unbind(name);
+        } finally {
+            WritableServiceBasedNamingStore.popOwner();
+        }
+        try {
+            store.lookup(name);
+            fail("Should have thrown name not found");
+        } catch (NameNotFoundException expect) {
         }
     }
 
