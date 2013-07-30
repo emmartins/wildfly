@@ -133,22 +133,26 @@ public class WritableServiceBasedNamingStoreTestCase {
 
     @Test
     public void testBindNoOwner() throws Exception {
-        try {
-            store.bind(new CompositeName("test"), new Object());
-            fail("Should have failed with a read-only context exception");
-        } catch (UnsupportedOperationException expected) {
-        }
+        testBind(null);
     }
 
     @Test
     public void testBind() throws Exception {
+        testBind(OWNER_FOO);
+    }
+
+    private void testBind(ServiceName owner) throws Exception {
         final Name name = new CompositeName("test");
         final Object value = new Object();
-        WritableServiceBasedNamingStore.pushOwner(OWNER_FOO);
+        if(owner != null) {
+            WritableServiceBasedNamingStore.pushOwner(owner);
+        }
         try {
             store.bind(name, value);
         } finally {
-            WritableServiceBasedNamingStore.popOwner();
+            if(owner != null) {
+                WritableServiceBasedNamingStore.popOwner();
+            }
         }
         assertEquals(value, store.lookup(name));
     }
@@ -168,14 +172,27 @@ public class WritableServiceBasedNamingStoreTestCase {
 
     @Test
     public void testUnbind() throws Exception {
+        testUnbind(OWNER_FOO);
+    }
+
+    @Test
+    public void testUnBindNoOwner() throws Exception {
+        testUnbind(null);
+    }
+
+    private void testUnbind(ServiceName owner) throws Exception {
         final Name name = new CompositeName("test");
         final Object value = new Object();
-        WritableServiceBasedNamingStore.pushOwner(OWNER_FOO);
+        if(owner != null) {
+            WritableServiceBasedNamingStore.pushOwner(owner);
+        }
         try {
             store.bind(name, value);
             store.unbind(name);
         } finally {
-            WritableServiceBasedNamingStore.popOwner();
+            if(owner != null) {
+                WritableServiceBasedNamingStore.popOwner();
+            }
         }
         try {
             store.lookup(name);
@@ -185,55 +202,54 @@ public class WritableServiceBasedNamingStoreTestCase {
     }
 
     @Test
-    public void testUnBindNoOwner() throws Exception {
-        try {
-            store.unbind(new CompositeName("test"));
-            fail("Should have failed with a read-only context exception");
-        } catch (UnsupportedOperationException expected) {
-        }
-    }
-
-    @Test
     public void testCreateSubcontext() throws Exception {
-        WritableServiceBasedNamingStore.pushOwner(OWNER_FOO);
-        try {
-            assertTrue(((NamingContext) store.createSubcontext(new CompositeName("test"))).getNamingStore() instanceof WritableServiceBasedNamingStore);
-        } finally {
-            WritableServiceBasedNamingStore.popOwner();
-        }
+        testCreateSubcontext(OWNER_FOO);
     }
 
     @Test
     public void testCreateSubContextNoOwner() throws Exception {
+        testCreateSubcontext(null);
+    }
+
+    private void testCreateSubcontext(ServiceName owner) throws Exception {
+        if(owner != null) {
+            WritableServiceBasedNamingStore.pushOwner(owner);
+        }
         try {
-            store.createSubcontext(new CompositeName("test"));
-            fail("Should have failed with a read-only context exception");
-        } catch (UnsupportedOperationException expected) {
+            assertTrue(((NamingContext) store.createSubcontext(new CompositeName("test"))).getNamingStore() instanceof WritableServiceBasedNamingStore);
+        } finally {
+            if(owner != null) {
+                WritableServiceBasedNamingStore.popOwner();
+            }
         }
     }
 
     @Test
     public void testRebind() throws Exception {
-        final Name name = new CompositeName("test");
-        final Object value = new Object();
-        final Object newValue = new Object();
-        WritableServiceBasedNamingStore.pushOwner(OWNER_FOO);
-        try {
-            store.bind(name, value);
-            store.rebind(name, newValue);
-        } finally {
-            WritableServiceBasedNamingStore.popOwner();
-        }
-        assertEquals(newValue, store.lookup(name));
+        testRebind(OWNER_FOO);
     }
 
     @Test
     public void testRebindNoOwner() throws Exception {
-        try {
-            store.rebind(new CompositeName("test"), new Object());
-            fail("Should have failed with a read-only context exception");
-        } catch (UnsupportedOperationException expected) {
+        testRebind(null);
+    }
+
+    private void testRebind(ServiceName owner) throws Exception {
+        final Name name = new CompositeName("test");
+        final Object value = new Object();
+        final Object newValue = new Object();
+        if(owner != null) {
+            WritableServiceBasedNamingStore.pushOwner(owner);
         }
+        try {
+            store.bind(name, value);
+            store.rebind(name, newValue);
+        } finally {
+            if(owner != null) {
+                WritableServiceBasedNamingStore.popOwner();
+            }
+        }
+        assertEquals(newValue, store.lookup(name));
     }
 
     /**

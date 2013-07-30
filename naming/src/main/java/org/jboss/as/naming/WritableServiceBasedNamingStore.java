@@ -58,7 +58,7 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
     }
 
     public void bind(final Name name, final Object object) throws NamingException {
-        final ServiceName deploymentUnitServiceName = requireOwner();
+        final ServiceName deploymentUnitServiceName = getOwner();
         final ServiceName bindName = buildServiceName(name);
         bind(name, bindName, object, deploymentUnitServiceName);
     }
@@ -94,7 +94,7 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
     }
 
     public void rebind(Name name, Object object) throws NamingException {
-        final ServiceName deploymentUnitServiceName = requireOwner();
+        final ServiceName deploymentUnitServiceName = getOwner();
         final ServiceName bindName = buildServiceName(name);
         try {
             unbind(name, bindName);
@@ -110,7 +110,6 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
 
     @SuppressWarnings("unchecked")
     public void unbind(final Name name) throws NamingException {
-        requireOwner();
         final ServiceName bindName = buildServiceName(name);
         // do the unbinding
         unbind(name, bindName);
@@ -134,19 +133,14 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
     }
 
     public Context createSubcontext(final Name name) throws NamingException {
-        requireOwner();
         if (isLastComponentEmpty(name)) {
             throw MESSAGES.emptyNameNotAllowed();
         }
         return new NamingContext(name, WritableServiceBasedNamingStore.this, new Hashtable<String, Object>());
     }
 
-    private ServiceName requireOwner() {
-        final ServiceName owner = WRITE_OWNER.peek();
-        if (owner == null) {
-            throw MESSAGES.readOnlyNamingContext();
-        }
-        return owner;
+    private ServiceName getOwner() {
+        return WRITE_OWNER.peek();
     }
 
     public static void pushOwner(final ServiceName du) {
