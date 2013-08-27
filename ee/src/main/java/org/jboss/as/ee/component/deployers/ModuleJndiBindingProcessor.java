@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.jboss.as.controller.ServiceVerificationHandler;
+import org.jboss.as.ee.EeLogger;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.ClassDescriptionTraversal;
@@ -110,14 +111,12 @@ public class
             bindingConfigurations.add(new BindingConfiguration("java:app/env", new ContextInjectionSource("env", "java:app/env")));
         }
 
-
         final ServiceName moduleOwnerName = deploymentUnit.getServiceName().append("module").append(moduleConfiguration.getApplicationName()).append(moduleConfiguration.getModuleName());
         for (BindingConfiguration binding : bindingConfigurations) {
-
             final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(moduleConfiguration.getApplicationName(), moduleConfiguration.getModuleName(), null, false, binding.getName());
-
-            deploymentDescriptorBindings.put(bindInfo.getBinderServiceName(), binding);
-            addJndiBinding(moduleConfiguration, binding, phaseContext, bindInfo.getBinderServiceName(), moduleOwnerName, moduleCount, dependencies);
+            if(deploymentDescriptorBindings.put(bindInfo.getBinderServiceName(), binding) != null) {
+                EeLogger.ROOT_LOGGER.multipleDeploymentDescriptorEnvironmentEntriesTargetingServiceName(bindInfo.getBinderServiceName());
+            }
         }
 
         //now we process all component level bindings, for components that do not have their own java:comp namespace.
@@ -134,9 +133,14 @@ public class
                 }
 
                 final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(moduleConfiguration.getApplicationName(), moduleConfiguration.getModuleName(), null, false, binding.getName());
-                deploymentDescriptorBindings.put(bindInfo.getBinderServiceName(), binding);
-                addJndiBinding(moduleConfiguration, binding, phaseContext, bindInfo.getBinderServiceName(), moduleOwnerName, moduleCount, dependencies);
+                if(deploymentDescriptorBindings.put(bindInfo.getBinderServiceName(), binding) != null) {
+                    EeLogger.ROOT_LOGGER.multipleDeploymentDescriptorEnvironmentEntriesTargetingServiceName(bindInfo.getBinderServiceName());
+                }
             }
+        }
+
+        for(Map.Entry<ServiceName,BindingConfiguration> ddBinding : deploymentDescriptorBindings.entrySet()){
+            addJndiBinding(moduleConfiguration, ddBinding.getValue(), phaseContext, ddBinding.getKey(), moduleOwnerName, moduleCount, dependencies);
         }
 
         //now add all class level bindings

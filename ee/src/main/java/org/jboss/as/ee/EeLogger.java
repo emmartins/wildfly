@@ -33,6 +33,7 @@ import org.jboss.logging.annotations.LogMessage;
 import org.jboss.logging.Logger;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
+import org.jboss.msc.service.ServiceName;
 import org.jboss.vfs.VirtualFile;
 
 /**
@@ -199,5 +200,10 @@ public interface EeLogger extends BasicLogger {
     @LogMessage(level = WARN)
     @Message(id = 11013, value = "%s in subdeployment ignored. jboss-ejb-client.xml is only parsed for top level deployments.")
     void subdeploymentIgnored(String pathName);
+
+    @LogMessage(level = WARN)
+    @Message(id = 11014, value = "Multiple deployment descriptor environment entries targeting service name %s, value overridden.")
+    void multipleDeploymentDescriptorEnvironmentEntriesTargetingServiceName(ServiceName serviceName);
+
 
 }
