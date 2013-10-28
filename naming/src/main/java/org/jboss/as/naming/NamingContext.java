@@ -22,15 +22,10 @@
 
 package org.jboss.as.naming;
 
-import static org.jboss.as.naming.NamingLogger.ROOT_LOGGER;
-import static org.jboss.as.naming.NamingMessages.MESSAGES;
-import static org.jboss.as.naming.util.NamingUtils.isEmpty;
-import static org.jboss.as.naming.util.NamingUtils.namingEnumeration;
-import static org.jboss.as.naming.util.NamingUtils.namingException;
-import static org.jboss.as.naming.util.NamingUtils.notAContextException;
-
-import java.util.Arrays;
-import java.util.Hashtable;
+import org.jboss.as.naming.JndiPermission.Action;
+import org.jboss.as.naming.context.ObjectFactoryBuilder;
+import org.jboss.as.naming.util.NameParser;
+import org.wildfly.security.manager.WildFlySecurityManager;
 
 import javax.naming.Binding;
 import javax.naming.CannotProceedException;
@@ -49,11 +44,15 @@ import javax.naming.event.NamingListener;
 import javax.naming.spi.NamingManager;
 import javax.naming.spi.ObjectFactory;
 import javax.naming.spi.ResolveResult;
+import java.util.Arrays;
+import java.util.Hashtable;
 
-import org.jboss.as.naming.JndiPermission.Action;
-import org.jboss.as.naming.context.ObjectFactoryBuilder;
-import org.jboss.as.naming.util.NameParser;
-import org.wildfly.security.manager.WildFlySecurityManager;
+import static org.jboss.as.naming.NamingLogger.ROOT_LOGGER;
+import static org.jboss.as.naming.NamingMessages.MESSAGES;
+import static org.jboss.as.naming.util.NamingUtils.isEmpty;
+import static org.jboss.as.naming.util.NamingUtils.namingEnumeration;
+import static org.jboss.as.naming.util.NamingUtils.namingException;
+import static org.jboss.as.naming.util.NamingUtils.notAContextException;
 
 /**
  * Naming context implementation which proxies calls to a {@code NamingStore} instance.  This context is
@@ -101,13 +100,6 @@ public class NamingContext implements EventContext {
             WildFlySecurityManager.setPropertyPrivileged(Context.URL_PKG_PREFIXES, PACKAGE_PREFIXES);
         } else if(!Arrays.asList(property.split(":")).contains(PACKAGE_PREFIXES)) {
             WildFlySecurityManager.setPropertyPrivileged(Context.URL_PKG_PREFIXES, PACKAGE_PREFIXES + ":" + property);
-        }
-        try {
-            //If we are reusing the JVM. e.g. in tests we should not set this again
-            if (!NamingManager.hasInitialContextFactoryBuilder())
-                NamingManager.setInitialContextFactoryBuilder(new InitialContextFactoryBuilder());
-        } catch (NamingException e) {
-            ROOT_LOGGER.failedToSet(e, "InitialContextFactoryBuilder");
         }
     }
 

@@ -22,9 +22,8 @@
 
 package org.jboss.as.naming.interfaces.java;
 
-import org.jboss.as.naming.NamingContext;
+import org.jboss.as.naming.InitialContext;
 
-import javax.naming.CompositeName;
 import javax.naming.Context;
 import javax.naming.Name;
 import javax.naming.spi.ObjectFactory;
@@ -39,6 +38,7 @@ public class javaURLContextFactory implements ObjectFactory {
 
     /** {@inheritDoc} */
     public Object getObjectInstance(Object obj, Name name, Context nameCtx, Hashtable<?, ?> environment) throws Exception {
-        return new NamingContext(name != null ? name : new CompositeName(""), environment);
+        return new InitialContext(environment);
     }
+
 }

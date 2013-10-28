@@ -22,10 +22,7 @@
 
 package org.jboss.as.naming;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Hashtable;
-import java.util.Map;
+import org.jboss.as.naming.context.NamespaceContextSelector;
 
 import javax.naming.Binding;
 import javax.naming.Context;
@@ -34,245 +31,145 @@ import javax.naming.NameClassPair;
 import javax.naming.NameNotFoundException;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
-import javax.naming.spi.NamingManager;
-import javax.naming.spi.ObjectFactory;
-
-import org.jboss.as.naming.context.NamespaceContextSelector;
+import java.util.Hashtable;
 
 /**
  * @author Eduardo Martins
  * @author John Bailey
  */
-public class InitialContext extends javax.naming.InitialContext {
-
-    /**
-     * Map of any additional naming schemes
-     */
-    private static volatile Map<String, ObjectFactory> urlContextFactories = Collections.emptyMap();
-
-    /**
-     * Add an ObjectFactory to handle requests for a specific URL scheme.
-     * @param scheme The URL scheme to handle.
-     * @param factory The ObjectFactory that can handle the requests.
-     */
-    public static synchronized void addUrlContextFactory(final String scheme, ObjectFactory factory) {
-        Map<String, ObjectFactory> factories = new HashMap<String, ObjectFactory>(urlContextFactories);
-        factories.put(scheme, factory);
-        urlContextFactories = Collections.unmodifiableMap(factories);
-    }
-
-    /**
-     * Remove an ObjectFactory from the map of registered ones. To make sure that not anybody can remove an
-     * ObjectFactory both the scheme as well as the actual object factory itself need to be supplied. So you
-     * can only remove the factory if you have the factory object.
-     * @param scheme The URL scheme for which the handler is registered.
-     * @param factory The factory object associated with the scheme
-     * @throws IllegalArgumentException if the requested scheme/factory combination is not registered.
-     */
-    public static synchronized void removeUrlContextFactory(final String scheme, ObjectFactory factory) {
-        Map<String, ObjectFactory> factories = new HashMap<String, ObjectFactory>(urlContextFactories);
-
-        ObjectFactory f = factories.get(scheme);
-        if (f == factory) {
-            factories.remove(scheme);
-            urlContextFactories = Collections.unmodifiableMap(factories);
-            return;
-        } else {
-            throw new IllegalArgumentException();
-        }
-    }
+public class InitialContext extends NamingContext {
 
     public InitialContext(Hashtable environment) throws NamingException {
         super(environment);
-        defaultInitCtx = new DefaultInitialContext(environment);
-        gotDefault = true;
     }
 
-    @Override
-    protected void init(Hashtable environment) throws NamingException {
-        myProps = environment;
+    protected Context findContext(final Name name, final ParsedName parsedName) throws NamingException {
+        if(parsedName.namespace() == null || parsedName.namespace().isEmpty()) {
+            return null;
+        }
+        final NamespaceContextSelector selector = NamespaceContextSelector.getCurrentSelector();
+        if (selector == null) {
+            throw new NameNotFoundException(name.toString());
+        }
+        final Context namespaceContext = selector.getContext(parsedName.namespace());
+        if (namespaceContext == null) {
+            throw new NameNotFoundException(name.toString());
+        }
+        return namespaceContext;
     }
 
-    @Override
-    protected Context getDefaultInitCtx() throws NamingException {
-        return defaultInitCtx;
-    }
-
-    @Override
-    protected Context getURLOrDefaultInitCtx(String name) throws NamingException {
-        String scheme = getURLScheme(name);
-        if (scheme != null && !scheme.equals("java")) {
-            ObjectFactory factory = urlContextFactories.get(scheme);
-            if (factory != null) {
-                try {
-                    return (Context) factory.getObjectInstance(null, null, null, getEnvironment());
-                }catch(NamingException e) {
-                    throw e;
-                } catch (Exception e) {
-                    NamingException n = new NamingException(e.getMessage());
-                    n.initCause(e);
-                    throw n;
+    private ParsedName parse(final Name name) throws NamingException {
+        final Name remaining;
+        final String namespace;
+        if (name.isEmpty()) {
+            namespace = null;
+            remaining = name;
+        } else {
+            final String first = name.get(0);
+            if (first.startsWith("java:")) {
+                final String theRest = first.substring(5);
+                if (theRest.startsWith("/")) {
+                    namespace = "";
+                    remaining = getNameParser(theRest).parse(theRest);
+                } else if (theRest.equals("jboss") && name.size() > 1 && name.get(1).equals("exported")) {
+                    namespace = "jboss/exported";
+                    remaining = name.getSuffix(2);
+                } else {
+                    namespace = theRest;
+                    remaining = name.getSuffix(1);
                 }
             } else {
-                Context ctx = NamingManager.getURLContext(scheme, getEnvironment());
-                if(ctx!=null) {
-                    return ctx;
-                }
+                namespace = null;
+                remaining = name;
             }
         }
-        return getDefaultInitCtx();
+
+        return new ParsedName() {
+            public String namespace() {
+                return namespace;
+            }
+
+            public Name remaining() {
+                return remaining;
+            }
+        };
     }
 
-    @Override
-    protected Context getURLOrDefaultInitCtx(Name name) throws NamingException {
-        if (name.size() > 0) {
-            return getURLOrDefaultInitCtx(name.get(0));
-        }
-        return getDefaultInitCtx();
+    public Object lookup(final Name name, boolean dereference) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            return super.lookup(parsedName.remaining(), dereference);
+        else
+            return namespaceContext.lookup(parsedName.remaining());
     }
 
-    private static String getURLScheme(String str) {
-        int colon_posn = str.indexOf(':');
-        int slash_posn = str.indexOf('/');
-
-        if (colon_posn > 0 && (slash_posn == -1 || colon_posn < slash_posn))
-            return str.substring(0, colon_posn);
-        return null;
+    public NamingEnumeration<Binding> listBindings(final Name name) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            return super.listBindings(parsedName.remaining());
+        else
+            return namespaceContext.listBindings(parsedName.remaining());
     }
 
-    private interface ParsedName {
+    public NamingEnumeration<NameClassPair> list(final Name name) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            return super.list(parsedName.remaining());
+        else
+            return namespaceContext.list(parsedName.remaining());
+    }
+
+    public void bind(Name name, Object object) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            super.bind(parsedName.remaining(), object);
+        else
+            namespaceContext.bind(parsedName.remaining(), object);
+    }
+
+    public void rebind(Name name, Object object) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            super.rebind(parsedName.remaining(), object);
+        else
+            namespaceContext.rebind(parsedName.remaining(), object);
+    }
+
+    public void unbind(Name name) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            super.unbind(parsedName.remaining());
+        else
+            namespaceContext.unbind(parsedName.remaining());
+    }
+
+    public void destroySubcontext(Name name) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            super.destroySubcontext(parsedName.remaining());
+        else
+            namespaceContext.destroySubcontext(parsedName.remaining());
+    }
+
+    public Context createSubcontext(Name name) throws NamingException {
+        final ParsedName parsedName = parse(name);
+        final Context namespaceContext = findContext(name, parsedName);
+        if (namespaceContext == null)
+            return super.createSubcontext(parsedName.remaining());
+        else
+            return namespaceContext.createSubcontext(parsedName.remaining());
+    }
+
+    protected interface ParsedName {
         String namespace();
         Name remaining();
     }
 
-    static class DefaultInitialContext extends NamingContext {
-
-        public DefaultInitialContext(Hashtable environment) {
-            super(environment);
-        }
-
-        private Context findContext(final Name name, final ParsedName parsedName) throws NamingException {
-            if (parsedName.namespace() == null || parsedName.namespace().equals("")) {
-                return null;
-            }
-            final NamespaceContextSelector selector = NamespaceContextSelector.getCurrentSelector();
-            if (selector == null) {
-                throw new NameNotFoundException(name.toString());
-            }
-            final Context namespaceContext = selector.getContext(parsedName.namespace());
-            if (namespaceContext == null) {
-                throw new NameNotFoundException(name.toString());
-            }
-            return namespaceContext;
-        }
-
-        private ParsedName parse(final Name name) throws NamingException {
-            final Name remaining;
-            final String namespace;
-            if (name.isEmpty()) {
-                namespace = null;
-                remaining = name;
-            } else {
-                final String first = name.get(0);
-                if (first.startsWith("java:")) {
-                    final String theRest = first.substring(5);
-                    if (theRest.startsWith("/")) {
-                        namespace = null;
-                        remaining = getNameParser(theRest).parse(theRest);
-                    } else if (theRest.equals("jboss") && name.size() > 1 && name.get(1).equals("exported")) {
-                        namespace = "jboss/exported";
-                        remaining = name.getSuffix(2);
-                    } else {
-                        namespace = theRest;
-                        remaining = name.getSuffix(1);
-                    }
-                } else {
-                    namespace = null;
-                    remaining = name;
-                }
-            }
-
-            return new ParsedName() {
-                public String namespace() {
-                    return namespace;
-                }
-
-                public Name remaining() {
-                    return remaining;
-                }
-            };
-        }
-
-        public Object lookup(final Name name, boolean dereference) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                return super.lookup(parsedName.remaining(),dereference);
-            else
-                return namespaceContext.lookup(parsedName.remaining());
-        }
-
-        public NamingEnumeration<Binding> listBindings(final Name name) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                return super.listBindings(parsedName.remaining());
-            else
-                return namespaceContext.listBindings(parsedName.remaining());
-        }
-
-        public NamingEnumeration<NameClassPair> list(final Name name) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                return super.list(parsedName.remaining());
-            else
-                return namespaceContext.list(parsedName.remaining());
-        }
-
-        public void bind(Name name, Object object) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                super.bind(parsedName.remaining(), object);
-            else
-                namespaceContext.bind(parsedName.remaining(), object);
-        }
-
-        public void rebind(Name name, Object object) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                super.rebind(parsedName.remaining(), object);
-            else
-                namespaceContext.rebind(parsedName.remaining(), object);
-        }
-
-        public void unbind(Name name) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                super.unbind(parsedName.remaining());
-            else
-                namespaceContext.unbind(parsedName.remaining());
-        }
-
-        public void destroySubcontext(Name name) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                super.destroySubcontext(parsedName.remaining());
-            else
-                namespaceContext.destroySubcontext(parsedName.remaining());
-        }
-
-        public Context createSubcontext(Name name) throws NamingException {
-            final ParsedName parsedName = parse(name);
-            final Context namespaceContext = findContext(name, parsedName);
-            if (namespaceContext == null)
-                return super.createSubcontext(parsedName.remaining());
-            else
-                return namespaceContext.createSubcontext(parsedName.remaining());
-        }
-    }
 }

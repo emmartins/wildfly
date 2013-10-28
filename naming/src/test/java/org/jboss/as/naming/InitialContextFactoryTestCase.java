@@ -26,7 +26,6 @@ import static org.junit.Assert.assertTrue;
 
 import javax.naming.Context;
 import javax.naming.InitialContext;
-import javax.naming.spi.NamingManager;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -47,14 +46,6 @@ public class InitialContextFactoryTestCase {
         System.setProperty(Context.INITIAL_CONTEXT_FACTORY, InitialContextFactory.class.getName());
         InitialContext initialContext = new InitialContext();
         Context context = (Context) initialContext.lookup("");
-        assertTrue(context instanceof NamingContext);
-
-        // Test with builder
-        if (!NamingManager.hasInitialContextFactoryBuilder()) {
-            NamingManager.setInitialContextFactoryBuilder(new InitialContextFactoryBuilder());
-        }
-        initialContext = new InitialContext();
-        context = (Context) initialContext.lookup("");
         assertTrue(context instanceof NamingContext);
     }
 

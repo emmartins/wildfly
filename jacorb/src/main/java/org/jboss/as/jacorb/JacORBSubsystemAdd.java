@@ -22,12 +22,6 @@
 
 package org.jboss.as.jacorb;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
-
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
@@ -35,14 +29,12 @@ import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.ServiceVerificationHandler;
 import org.jboss.as.jacorb.deployment.JacORBDependencyProcessor;
 import org.jboss.as.jacorb.deployment.JacORBMarkerProcessor;
-import org.jboss.as.jacorb.naming.jndi.JBossCNCtxFactory;
 import org.jboss.as.jacorb.rmi.DelegatingStubFactoryFactory;
 import org.jboss.as.jacorb.security.DomainServerSocketFactory;
 import org.jboss.as.jacorb.security.DomainSocketFactory;
 import org.jboss.as.jacorb.service.CorbaNamingService;
 import org.jboss.as.jacorb.service.CorbaORBService;
 import org.jboss.as.jacorb.service.CorbaPOAService;
-import org.jboss.as.naming.InitialContext;
 import org.jboss.as.network.SocketBinding;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
@@ -57,6 +49,12 @@ import org.omg.PortableServer.IdAssignmentPolicyValue;
 import org.omg.PortableServer.LifespanPolicyValue;
 import org.omg.PortableServer.POA;
 import org.wildfly.security.manager.WildFlySecurityManager;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
+import java.util.Properties;
 
 /**
  * <p>
@@ -118,13 +116,6 @@ public class JacORBSubsystemAdd extends AbstractAddStepHandler {
         //TODO: investigate a better way to handle this
         org.jboss.com.sun.corba.se.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(true, new DelegatingStubFactoryFactory());
         org.jboss.com.sun.corba.se.spi.orb.ORB.getPresentationManager().setStubFactoryFactory(false, new DelegatingStubFactoryFactory());
-
-        //setup naming.
-        InitialContext.addUrlContextFactory("corbaloc", JBossCNCtxFactory.INSTANCE);
-        InitialContext.addUrlContextFactory("corbaname", JBossCNCtxFactory.INSTANCE);
-        InitialContext.addUrlContextFactory("IOR", JBossCNCtxFactory.INSTANCE);
-        InitialContext.addUrlContextFactory("iiopname", JBossCNCtxFactory.INSTANCE);
-        InitialContext.addUrlContextFactory("iiop", JBossCNCtxFactory.INSTANCE);
 
         context.addStep(new AbstractDeploymentChainStep() {
             public void execute(DeploymentProcessorTarget processorTarget) {
