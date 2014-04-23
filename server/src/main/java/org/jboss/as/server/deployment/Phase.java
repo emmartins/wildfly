@@ -440,7 +440,6 @@ public enum Phase {
     public static final int POST_MODULE_WELD_PORTABLE_EXTENSIONS        = 0x0E00;
     public static final int POST_MODULE_XTS_PORTABLE_EXTENSIONS         = 0x0E10;
     public static final int POST_MODULE_JMS_CDI_EXTENSIONS              = 0x0F00;
-    public static final int POST_MODULE_JMS_DEFINITION_DEPLOYMENT       = 0x0F80;
     // should come before ejb jndi bindings processor
     public static final int POST_MODULE_EJB_IMPLICIT_NO_INTERFACE_VIEW  = 0x1000;
     public static final int POST_MODULE_EJB_JNDI_BINDINGS               = 0x1100;
@@ -450,8 +449,12 @@ public enum Phase {
     public static final int POST_MODULE_ENV_ENTRY                       = 0x1400;
     public static final int POST_MODULE_EJB_REF                         = 0x1500;
     public static final int POST_MODULE_PERSISTENCE_REF                 = 0x1600;
-    public static final int POST_MODULE_DATASOURCE_REF                  = 0x1700;
-    public static final int POST_MODULE_MAIL_SESSION_REF                = 0x1701;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_DATA_SOURCE       = 0x1700;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_MAIL_SESSION      = 0x1701;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_ADMIN_OBJECT      = 0x1702;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_CONN_FACTORY      = 0x1703;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_JMS_DESTINATION   = 0x1704;
+    public static final int POST_MODULE_RESOURCE_DEF_DESC_JMS_CONN_FACTORY  = 0x1705;
     public static final int POST_MODULE_WS_REF_DESCRIPTOR               = 0x1800;
     public static final int POST_MODULE_WS_REF_ANNOTATION               = 0x1801;
     public static final int POST_MODULE_WS_VERIFICATION                 = 0x1880;

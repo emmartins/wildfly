@@ -32,6 +32,7 @@ import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.DeploymentDescriptorEnvironment;
 import org.jboss.as.ee.component.EEApplicationClasses;
+import org.jboss.as.ee.resource.definition.ResourceDefinitionInjectionSource;
 import org.jboss.as.ee.component.ResourceInjectionTarget;
 import org.jboss.as.ee.component.deployers.AbstractDeploymentDescriptorBindingsProcessor;
 import org.jboss.as.server.deployment.DeploymentUnit;
@@ -42,6 +43,7 @@ import org.jboss.metadata.javaee.spec.MailSessionsMetaData;
 
 /**
  * @author <a href="mailto:tomaz.cerar@redhat.com">Tomaz Cerar</a> (c) 2013 Red Hat Inc.
+ * @author Eduardo Martins
  */
 public class MailSessionDeploymentDescriptorParser extends AbstractDeploymentDescriptorBindingsProcessor {
 
@@ -53,7 +55,8 @@ public class MailSessionDeploymentDescriptorParser extends AbstractDeploymentDes
         if (mailSessions != null) {
             List<BindingConfiguration> ret = new ArrayList<>(mailSessions.size());
             for (MailSessionMetaData mailSession : mailSessions) {
-                ret.add(getBindingConfiguration(mailSession));
+                final ResourceDefinitionInjectionSource injectionSource = getResourceDefinitionInjectionSource(mailSession);
+                ret.add(new BindingConfiguration(injectionSource.getJndiName(), injectionSource));
             }
             return ret;
         }
@@ -65,12 +68,9 @@ public class MailSessionDeploymentDescriptorParser extends AbstractDeploymentDes
     public void undeploy(DeploymentUnit context) {
     }
 
-    private BindingConfiguration getBindingConfiguration(final MailSessionMetaData mailSession) {
-        String jndiName = MailSessionAdd.getJndiName(mailSession.getName());
-
-        SessionProvider provider = SessionProviderFactory.create(mailSession);
-        final DirectMailSessionInjectionSource source = new DirectMailSessionInjectionSource(jndiName, provider);
-        return new BindingConfiguration(jndiName, source);
-
+    protected static ResourceDefinitionInjectionSource getResourceDefinitionInjectionSource(final MailSessionMetaData mailSession) {
+        final String jndiName = mailSession.getName();
+        final SessionProvider provider = SessionProviderFactory.create(mailSession);
+        return new DirectMailSessionInjectionSource(jndiName, provider);
     }
 }

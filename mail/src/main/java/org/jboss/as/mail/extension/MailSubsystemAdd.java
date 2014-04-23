@@ -58,8 +58,8 @@ class MailSubsystemAdd extends AbstractBoottimeAddStepHandler {
     protected void performBoottime(OperationContext context, ModelNode operation, ModelNode model, ServiceVerificationHandler verificationHandler, List<ServiceController<?>> newControllers) throws OperationFailedException {
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(DeploymentProcessorTarget processorTarget) {
-                processorTarget.addDeploymentProcessor(MailExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_MAIL_SESSION_DEFINITION_ANNOTATION, new MailSessionDefinitionAnnotationParser());
-                processorTarget.addDeploymentProcessor(MailExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_MAIL_SESSION_REF, new MailSessionDeploymentDescriptorParser());
+                processorTarget.addDeploymentProcessor(MailExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_MAIL_SESSION_DEFINITION_ANNOTATION, new MailSessionDefinitionAnnotationProcessor());
+                processorTarget.addDeploymentProcessor(MailExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_RESOURCE_DEF_DESC_MAIL_SESSION, new MailSessionDefinitionDescriptorProcessor());
             }
         }, OperationContext.Stage.RUNTIME);
     }
