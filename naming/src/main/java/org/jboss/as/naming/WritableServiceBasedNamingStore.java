@@ -53,8 +53,8 @@ public class WritableServiceBasedNamingStore extends ServiceBasedNamingStore imp
 
     private final ServiceTarget serviceTarget;
 
-    public WritableServiceBasedNamingStore(ServiceRegistry serviceRegistry, ServiceName serviceNameBase, ServiceTarget serviceTarget) {
-        super(serviceRegistry, serviceNameBase);
+    public WritableServiceBasedNamingStore(ServiceRegistry serviceRegistry, Name baseName, ServiceName serviceNameBase, ServiceTarget serviceTarget) {
+        super(serviceRegistry, baseName, serviceNameBase);
         this.serviceTarget = serviceTarget;
     }
 

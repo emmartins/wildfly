@@ -35,6 +35,7 @@ import javax.naming.NameParser;
 import javax.naming.NamingEnumeration;
 import javax.naming.NamingException;
 
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceContainer;
 import org.jboss.msc.service.ServiceName;
@@ -62,7 +63,7 @@ public class ServiceBasedNamingStoreTestCase {
     @Before
     public void setupServiceContainer() {
         container = ServiceContainer.Factory.create();
-        store = new ServiceBasedNamingStore(container, ServiceName.JBOSS);
+        store = new ServiceBasedNamingStore(container, ContextNames.JAVA_JBOSS_NAME, ServiceName.JBOSS);
     }
 
     @After

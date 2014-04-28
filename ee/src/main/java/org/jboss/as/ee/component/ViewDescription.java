@@ -22,15 +22,6 @@
 
 package org.jboss.as.ee.component;
 
-import java.lang.reflect.Method;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
 import org.jboss.as.ee.component.interceptors.ComponentDispatcherInterceptor;
 import org.jboss.as.ee.component.interceptors.InterceptorOrder;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
@@ -46,7 +37,15 @@ import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.invocation.proxy.ProxyFactory;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.value.Value;
-import org.jboss.msc.value.Values;
+
+import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 import static org.jboss.as.server.deployment.Attachments.REFLECTION_INDEX;
 
@@ -91,7 +90,6 @@ public class ViewDescription {
         if (defaultConfiguratorRequired) {
             configurators.addFirst(DefaultConfigurator.INSTANCE);
         }
-        configurators.addFirst(ViewBindingConfigurator.INSTANCE);
     }
 
     /**
@@ -234,22 +232,6 @@ public class ViewDescription {
                 }
             }
             return null;
-        }
-    }
-
-
-    private static class ViewBindingConfigurator implements ViewConfigurator {
-
-        public static final ViewBindingConfigurator INSTANCE = new ViewBindingConfigurator();
-
-        @Override
-        public void configure(final DeploymentPhaseContext context, final ComponentConfiguration componentConfiguration, final ViewDescription description, final ViewConfiguration configuration) throws DeploymentUnitProcessingException {
-
-            // Create view bindings
-            final List<BindingConfiguration> bindingConfigurations = configuration.getBindingConfigurations();
-            for (String bindingName : description.getBindingNames()) {
-                bindingConfigurations.add(new BindingConfiguration(bindingName, description.createInjectionSource(description.getServiceName(), Values.immediateValue(componentConfiguration.getModuleClassLoader()))));
-            }
         }
     }
 

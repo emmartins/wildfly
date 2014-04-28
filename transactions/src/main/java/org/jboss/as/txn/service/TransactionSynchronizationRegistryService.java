@@ -21,20 +21,24 @@
  */
 package org.jboss.as.txn.service;
 
-import javax.transaction.TransactionSynchronizationRegistry;
-
 import org.jboss.as.controller.ServiceVerificationHandler;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.msc.service.AbstractService;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
+import org.jboss.msc.service.StartContext;
+import org.jboss.msc.service.StartException;
 import org.jboss.msc.value.InjectedValue;
+
+import javax.transaction.TransactionSynchronizationRegistry;
 
 /**
  * Service that exposes the TransactionSynchronizationRegistry
  *
  * @author Stuart Douglas
+ * @author Eduardo Martins
  */
 public class TransactionSynchronizationRegistryService extends AbstractService<TransactionSynchronizationRegistry> {
     public static final ServiceName SERVICE_NAME = TxnServices.JBOSS_TXN_SYNCHRONIZATION_REGISTRY;
@@ -52,5 +56,12 @@ public class TransactionSynchronizationRegistryService extends AbstractService<T
     @Override
     public TransactionSynchronizationRegistry getValue() throws IllegalStateException {
         return injectedArjunaTM.getValue().getTransactionSynchronizationRegistry();
+    }
+
+    @Override
+    public void start(StartContext context) throws StartException {
+        super.start(context);
+        ContextNames.bindInfoFor("java:jboss/TransactionSynchronizationRegistry").bind(context.getChildTarget(), getValue());
+        ContextNames.bindInfoFor("java:comp/TransactionSynchronizationRegistry").bind(context.getChildTarget(), getValue());
     }
 }

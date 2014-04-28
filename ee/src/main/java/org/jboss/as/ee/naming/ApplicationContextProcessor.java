@@ -22,54 +22,60 @@
 
 package org.jboss.as.ee.naming;
 
+import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.component.FixedInjectionSource;
+import org.jboss.as.ee.structure.DeploymentType;
+import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.ValueManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.deployment.JndiName;
+import org.jboss.as.naming.service.ScopedJavaAppServiceBasedNamingStoreService;
+import org.jboss.as.server.deployment.AttachmentList;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.Values;
 
 /**
- * Deployment processor that deploys a naming context for the current application.
+ * Deployment processor that deploys the scoped java:app context.
  *
  * @author John E. Bailey
  * @author Eduardo Martins
  */
 public class ApplicationContextProcessor implements DeploymentUnitProcessor {
 
-    /**
-     * Add a ContextService for this module.
-     *
-     * @param phaseContext the deployment unit context
-     * @throws org.jboss.as.server.deployment.DeploymentUnitProcessingException
-     */
+    private static final JndiName JNDI_NAME_java_app_AppName = new JndiName("java:app/AppName");
+
+    @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         if (deploymentUnit.getParent() != null) {
             return;
         }
-        EEModuleDescription moduleDescription = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION);
-        final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
+        final EEModuleDescription moduleDescription = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION);
+        if (moduleDescription == null) {
+            return;
+        }
+
+        // setup the scoped java:app naming store
+        final ScopedJavaAppServiceBasedNamingStoreService contextService = new ScopedJavaAppServiceBasedNamingStoreService();
         final ServiceName applicationContextServiceName = ContextNames.contextServiceNameOfApplication(moduleDescription.getApplicationName());
-        final NamingStoreService contextService = new NamingStoreService(true);
-        serviceTarget.addService(applicationContextServiceName, contextService).install();
-        final BinderService applicationNameBinder = new BinderService("AppName");
-        final ServiceName appNameServiceName = applicationContextServiceName.append("AppName");
-        serviceTarget.addService(appNameServiceName, applicationNameBinder)
-                .addDependency(applicationContextServiceName, ServiceBasedNamingStore.class, applicationNameBinder.getNamingStoreInjector())
-                .addInjection(applicationNameBinder.getManagedObjectInjector(), new ValueManagedReferenceFactory(Values.immediateValue(moduleDescription.getApplicationName())))
+        phaseContext.getServiceTarget().addService(applicationContextServiceName, contextService)
+                .addDependency(ContextNames.SHARED_APP_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, contextService.getSharedJavaAppServiceBasedNamingStore())
                 .install();
-        deploymentUnit.addToAttachmentList(org.jboss.as.server.deployment.Attachments.JNDI_DEPENDENCIES,appNameServiceName);
-        deploymentUnit.putAttachment(Attachments.APPLICATION_CONTEXT_CONFIG, applicationContextServiceName);
+
+        // add the java:app/AppName binding
+        moduleDescription.getBindingConfigurations().addDeploymentBinding(new BindingConfiguration(JNDI_NAME_java_app_AppName, new FixedInjectionSource(moduleDescription.getApplicationName())));
+
+        if (DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
+            // init the jndi dependencies DU attachment list
+            deploymentUnit.putAttachment(org.jboss.as.server.deployment.Attachments.JNDI_DEPENDENCIES, new AttachmentList<>(ServiceName.class));
+        }
     }
 
+    @Override
     public void undeploy(DeploymentUnit context) {
 
     }

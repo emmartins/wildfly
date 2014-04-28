@@ -193,7 +193,7 @@ public class DirectJMSConnectionFactoryInjectionSource extends InjectionSource {
         String txSupport = transactional ? XA_TX : NO_TX;
 
         final String pcfName = uniqueName(context, name);
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), name);
+        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), name);
         PooledConnectionFactoryService.installService(null, null, serviceTarget, pcfName, getHornetQServerName(), connectors,
                 discoveryGroupName, jgroupsChannelName, adapterParams,
                 bindInfo,

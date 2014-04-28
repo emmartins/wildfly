@@ -22,18 +22,9 @@
 
 package org.jboss.as.ee.component;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
+import org.jboss.as.ee.logging.EeLogger;
+import org.jboss.as.ee.naming.ComponentBindingConfigurations;
 import org.jboss.as.naming.ManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
@@ -44,6 +35,16 @@ import org.jboss.modules.ModuleLoader;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.value.InjectedValue;
+
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * A description of a generic Java EE component.  The description is pre-classloading so it references everything by name.
@@ -79,13 +80,12 @@ public class ComponentDescription implements ResourceInjectionTarget {
 
     private final Map<ServiceName, ServiceBuilder.DependencyType> dependencies = new HashMap<ServiceName, ServiceBuilder.DependencyType>();
 
-    private ComponentNamingMode namingMode = ComponentNamingMode.USE_MODULE;
+    private final ComponentNamingMode namingMode;
 
     private DeploymentDescriptorEnvironment deploymentDescriptorEnvironment;
 
-
     // Bindings
-    private final List<BindingConfiguration> bindingConfigurations = new ArrayList<BindingConfiguration>();
+    private final ComponentBindingConfigurations bindingConfigurations;
     //injections that have been set in the components deployment descriptor
     private final Map<String, Map<InjectionTarget, ResourceInjectionConfiguration>> resourceInjections = new HashMap<String, Map<InjectionTarget, ResourceInjectionConfiguration>>();
 
@@ -98,7 +98,7 @@ public class ComponentDescription implements ResourceInjectionTarget {
     private String beanDeploymentArchiveId;
 
     /**
-     * Construct a new instance.
+     * Construct a new instance with default naming mode.
      *
      * @param componentName             the component name
      * @param componentClassName        the component instance class name
@@ -106,6 +106,19 @@ public class ComponentDescription implements ResourceInjectionTarget {
      * @param deploymentUnitServiceName the service name of the DU containing this component
      */
     public ComponentDescription(final String componentName, final String componentClassName, final EEModuleDescription moduleDescription, final ServiceName deploymentUnitServiceName) {
+        this(componentName, componentClassName, moduleDescription, deploymentUnitServiceName, ComponentNamingMode.USE_MODULE);
+    }
+
+    /**
+     * Construct a new instance.
+     *
+     * @param componentName             the component name
+     * @param componentClassName        the component instance class name
+     * @param moduleDescription         the EE module description
+     * @param deploymentUnitServiceName the service name of the DU containing this component
+     * @param namingMode                the naming mode for this component
+     */
+    public ComponentDescription(final String componentName, final String componentClassName, final EEModuleDescription moduleDescription, final ServiceName deploymentUnitServiceName, final ComponentNamingMode namingMode) {
         this.moduleDescription = moduleDescription;
         if (componentName == null) {
             throw EeLogger.ROOT_LOGGER.nullVar("name");
@@ -125,6 +138,8 @@ public class ComponentDescription implements ResourceInjectionTarget {
         configurators.addLast(DEFAULT_COMPONENT_CONFIGURATOR);
         configurators.addLast(DEFAULT_INTERCEPTOR_CONFIGURATOR);
         configurators.addLast(DEFAULT_COMPONENT_VIEW_CONFIGURATOR);
+        this.namingMode = namingMode;
+        this.bindingConfigurations = new ComponentBindingConfigurations(moduleDescription.getBindingConfigurations(), namingMode);
     }
 
     public ComponentConfiguration createConfiguration(final ClassIndex classIndex, final ClassLoader moduleClassLoader, final ModuleLoader moduleLoader) {
@@ -405,18 +420,6 @@ public class ComponentDescription implements ResourceInjectionTarget {
     }
 
     /**
-     * Set the naming mode of this component.  May not be {@code null}.
-     *
-     * @param namingMode the naming mode
-     */
-    public void setNamingMode(final ComponentNamingMode namingMode) {
-        if (namingMode == null) {
-            throw EeLogger.ROOT_LOGGER.nullVar("namingMode");
-        }
-        this.namingMode = namingMode;
-    }
-
-    /**
      * @return The module description for the component
      */
     public EEModuleDescription getModuleDescription() {
@@ -470,7 +473,7 @@ public class ComponentDescription implements ResourceInjectionTarget {
      *
      * @return the binding configurations
      */
-    public List<BindingConfiguration> getBindingConfigurations() {
+    public ComponentBindingConfigurations getBindingConfigurations() {
         return bindingConfigurations;
     }
 
@@ -551,7 +554,8 @@ public class ComponentDescription implements ResourceInjectionTarget {
                     configuration.getComponentDescription().getNamingMode() == ComponentNamingMode.USE_MODULE,
                     configuration.getComponentName(),
                     configuration.getModuleName(),
-                    configuration.getApplicationName()
+                    configuration.getApplicationName(),
+                    configuration.getComponentDescription().getBindingConfigurations().getDeploymentBindings()
             );
             injectionConfiguration.getSource().getResourceValue(resolutionContext, serviceBuilder, context, managedReferenceFactoryValue);
         }
@@ -607,5 +611,4 @@ public class ComponentDescription implements ResourceInjectionTarget {
         }
         return interceptorConfig;
     }
-
 }

@@ -576,4 +576,9 @@ public class NamingContext implements EventContext {
     WritableNamingStore getWritableNamingStore() {
         return WritableNamingStore.class.cast(getNamingStore());
     }
+
+    @Override
+    public String toString() {
+        return "NamingContext(store="+ namingStore+", prefix="+prefix+")";
+    }
 }

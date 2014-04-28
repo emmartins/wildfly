@@ -24,7 +24,6 @@ package org.jboss.as.ee.concurrent.deployers.injection;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.component.LookupInjectionSource;
 import org.jboss.as.ee.component.deployers.EEResourceReferenceProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 
 import javax.enterprise.concurrent.ManagedExecutorService;
@@ -35,7 +34,7 @@ import javax.enterprise.concurrent.ManagedExecutorService;
 public class ManagedExecutorServiceResourceReferenceProcessor implements EEResourceReferenceProcessor {
 
     private static final String TYPE = ManagedExecutorService.class.getName();
-    private static final LookupInjectionSource injectionSource = new LookupInjectionSource(EEConcurrentDefaultBindingProcessor.COMP_DEFAULT_MANAGED_EXECUTOR_SERVICE_JNDI_NAME);
+    private static final LookupInjectionSource injectionSource = new LookupInjectionSource("java:comp/DefaultManagedExecutorService");
 
     public static final ManagedExecutorServiceResourceReferenceProcessor INSTANCE = new ManagedExecutorServiceResourceReferenceProcessor();
 

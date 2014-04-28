@@ -45,7 +45,7 @@ public class ChannelGroupServiceInstaller implements ClusterServiceInstaller {
     private final Logger logger = Logger.getLogger(this.getClass());
 
     private static ContextNames.BindInfo createBinding(String group) {
-        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "group", group).getAbsoluteName());
+        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "group", group));
     }
 
     @Override

@@ -24,6 +24,7 @@ package org.jboss.as.ee.component.deployers;
 
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.naming.ModuleBindingConfigurations;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -31,6 +32,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author Eduardo Martins
  */
 public final class EEModuleInitialProcessor implements DeploymentUnitProcessor {
 
@@ -44,7 +46,9 @@ public final class EEModuleInitialProcessor implements DeploymentUnitProcessor {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         final String deploymentUnitName = deploymentUnit.getName();
         final String moduleName;
-        if (deploymentUnitName.endsWith(".war") || deploymentUnitName.endsWith(".wab") || deploymentUnitName.endsWith(".jar") || deploymentUnitName.endsWith(".ear") || deploymentUnitName.endsWith(".rar")) {
+        if (deploymentUnitName.endsWith(".war")) {
+            moduleName = deploymentUnitName.substring(0, deploymentUnitName.length() - 4);
+        } else if (deploymentUnitName.endsWith(".wab") || deploymentUnitName.endsWith(".jar") || deploymentUnitName.endsWith(".ear") || deploymentUnitName.endsWith(".rar")) {
             moduleName = deploymentUnitName.substring(0, deploymentUnitName.length() - 4);
         } else {
             moduleName = deploymentUnitName;
@@ -59,7 +63,12 @@ public final class EEModuleInitialProcessor implements DeploymentUnitProcessor {
             //an appname of null means use the module name
             appName = null;
         }
-        deploymentUnit.putAttachment(Attachments.EE_MODULE_DESCRIPTION, new EEModuleDescription(appName, moduleName, earApplicationName, appClient));
+
+        final EEModuleDescription parentModuleDescription = deploymentUnit.getParent() != null ? deploymentUnit.getParent().getAttachment(Attachments.EE_MODULE_DESCRIPTION) : null;
+        final ModuleBindingConfigurations parentBindingConfigurations = parentModuleDescription != null ? parentModuleDescription.getBindingConfigurations() : null;
+        final ModuleBindingConfigurations bindingsConfiguration = new ModuleBindingConfigurations(parentBindingConfigurations);
+        // create and attach the module description
+        deploymentUnit.putAttachment(Attachments.EE_MODULE_DESCRIPTION, new EEModuleDescription(appName, moduleName, earApplicationName, appClient, bindingsConfiguration));
     }
 
     public void undeploy(final DeploymentUnit context) {

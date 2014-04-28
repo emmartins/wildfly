@@ -22,37 +22,33 @@
 
 package org.jboss.as.naming.service;
 
-import javax.naming.NamingException;
-
 import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.WritableServiceBasedNamingStore;
 import org.jboss.as.naming.logging.NamingLogger;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceRegistry;
-import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 
+import javax.naming.Name;
+import javax.naming.NamingException;
+
 /**
- * Service responsible for managing the creation and life-cycle of a service based naming store.
+ * Service responsible for managing the creation and life-cycle of a read only service based naming store.
  *
  * @author John E. Bailey
  * @author Stuart Douglas
  * @author Eduardo Martins
  */
-public class NamingStoreService implements Service<ServiceBasedNamingStore> {
+public class ServiceBasedNamingStoreService implements Service<ServiceBasedNamingStore> {
 
-    private final boolean readOnly;
-    private volatile ServiceBasedNamingStore store;
+    protected final Name baseName;
 
-    public NamingStoreService() {
-        this(false);
-    }
+    protected volatile ServiceBasedNamingStore store;
 
-    public NamingStoreService(boolean readOnly) {
-        this.readOnly = readOnly;
+    public ServiceBasedNamingStoreService(Name baseName) {
+        this.baseName = (Name) baseName.clone();
     }
 
     /**
@@ -65,8 +61,7 @@ public class NamingStoreService implements Service<ServiceBasedNamingStore> {
         if(store == null) {
             final ServiceRegistry serviceRegistry = context.getController().getServiceContainer();
             final ServiceName serviceNameBase = context.getController().getName();
-            final ServiceTarget serviceTarget = context.getChildTarget();
-            store = readOnly ? new ServiceBasedNamingStore(serviceRegistry, serviceNameBase) : new WritableServiceBasedNamingStore(serviceRegistry, serviceNameBase, serviceTarget);
+            store = new ServiceBasedNamingStore(serviceRegistry, baseName, serviceNameBase);
         }
     }
 
@@ -95,4 +90,5 @@ public class NamingStoreService implements Service<ServiceBasedNamingStore> {
     public ServiceBasedNamingStore getValue() throws IllegalStateException {
         return store;
     }
+
 }

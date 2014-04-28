@@ -110,16 +110,6 @@ class DefaultInterceptorConfigurator extends AbstractComponentConfigurator imple
                 throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptorClassName);
             }
 
-            final InterceptorEnvironment interceptorEnvironment = moduleDescription.getInterceptorEnvironment().get(interceptorClassName);
-            if (interceptorEnvironment != null) {
-                //if the interceptor has environment config we merge it into the components environment
-                description.getBindingConfigurations().addAll(interceptorEnvironment.getBindingConfigurations());
-                for (final ResourceInjectionConfiguration injection : interceptorEnvironment.getResourceInjections()) {
-                    description.addResourceInjection(injection);
-                }
-            }
-
-
             //we store the interceptor instance under the class key
             final Object contextKey = interceptorClass.getModuleClass();
             configuration.getInterceptorContextKeys().add(contextKey);

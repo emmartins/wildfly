@@ -305,6 +305,8 @@ public enum Phase {
     public static final int PARSE_WELD_IMPLICIT_DEPLOYMENT_DETECTION    = 0x2C00;
     public static final int PARSE_DATA_SOURCE_DEFINITION_ANNOTATION     = 0x2D00;
     public static final int PARSE_MAIL_SESSION_DEFINITION_ANNOTATION    = 0x2D01;
+    public static final int PARSE_EJB_CONTEXT_RESOURCE_REF_PROCESSORS = 0x2E00;
+    public static final int PARSE_EJB_DEFAULT_SECURITY_DOMAIN           = 0x2E02;
     public static final int PARSE_EJB_CONTEXT_BINDING                   = 0x2E00;
     public static final int PARSE_EJB_TIMERSERVICE_BINDING              = 0x2E01;
     public static final int PARSE_PERSISTENCE_UNIT                      = 0x2F00;
@@ -336,6 +338,9 @@ public enum Phase {
     public static final int PARSE_EE_DEFAULT_BINDINGS_CONFIG            = 0x4880;
     public static final int PARSE_JSF_MANAGED_BEANS                     = 0x4900;
     public static final int PARSE_JSF_METADATA                          = 0x4A00;
+
+    public static final int PARSE_RESOURCE_DEF_ANNOTATION_ADMINISTERED_OBJECT       = 0x5000;
+    public static final int PARSE_RESOURCE_DEF_ANNOTATION_CONNECTION_FACTORY        = 0x5001;
 
     // REGISTER
     public static final int REGISTER_BUNDLE_INSTALL                     = 0x0100;
@@ -470,10 +475,8 @@ public enum Phase {
     public static final int POST_MODULE_CMP_STORE_MANAGER               = 0x2500;
     public static final int POST_MODULE_EJB_IIOP                        = 0x2600;
     public static final int POST_MODULE_POJO                            = 0x2700;
-    public static final int POST_MODULE_IN_APP_CLIENT                   = 0x2780;
-    public static final int POST_MODULE_EE_INSTANCE_NAME                = 0x2790;
-    public static final int POST_MODULE_NAMING_CONTEXT                  = 0x2800;
-    public static final int POST_MODULE_APP_NAMING_CONTEXT              = 0x2900;
+    public static final int POST_MODULE_APP_NAMING_CONTEXT              = 0x2800;
+    public static final int POST_MODULE_MODULE_NAMING_CONTEXT           = 0x2801;
     public static final int POST_MODULE_CACHED_CONNECTION_MANAGER       = 0x2A00;
     public static final int POST_MODULE_LOGGING_CONFIG                  = 0x2B00;
     public static final int POST_MODULE_LOGGING_PROFILE                 = 0x2B10;
@@ -486,6 +489,14 @@ public enum Phase {
     public static final int POST_MODULE_WS_SERVICES_DEPS                = 0x3200;
     public static final int POST_MODULE_RAR_SERVICES_DEPS               = 0x3300;
     public static final int POST_MODULE_UNDERTOW_MODCLUSTER             = 0x3400;
+    public static final int POST_MODULE_WELD_BEAN_MANAGER_BINDING       = 0x3500;
+    public static final int POST_MODULE_ANNOTATION_JNDI_BINDINGS        = 0x3700;
+    public static final int POST_MODULE_COMPONENT_VIEW_JNDI_BINDINGS    = 0x3800;
+    public static final int POST_MODULE_INTERCEPTOR_ENV_JNDI_BINDINGS   = 0x3900;
+
+
+    // IMPORTANT: all EE deployment bindings must be
+    // in module/component description at this point
 
     // INSTALL
     public static final int INSTALL_SHARED_SESSION_MANAGER              = 0x0100;
@@ -498,15 +509,10 @@ public enum Phase {
     public static final int INSTALL_RESOLVER_MODULE                     = 0x0600;
     public static final int INSTALL_RA_NATIVE                           = 0x0800;
     public static final int INSTALL_RA_DEPLOYMENT                       = 0x0801;
-    public static final int INSTALL_CONNECTION_FACTORY_DEFINITION_ANNOTATION = 0x0802;
-    public static final int INSTALL_ADMIN_OBJECT_DEFINITION_ANNOTATION  = 0x0803;
     public static final int INSTALL_SERVICE_DEPLOYMENT                  = 0x0900;
     public static final int INSTALL_POJO_DEPLOYMENT                     = 0x0A00;
     public static final int INSTALL_RA_XML_DEPLOYMENT                   = 0x0B00;
     public static final int INSTALL_EE_MODULE_CONFIG                    = 0x1101;
-    public static final int INSTALL_DEFAULT_BINDINGS_JMS_CONNECTION_FACTORY = 0x1150;
-    public static final int INSTALL_DEFAULT_BINDINGS_EE_CONCURRENCY         = 0x1151;
-    public static final int INSTALL_DEFAULT_BINDINGS_DATASOURCE             = 0x1152;
     public static final int INSTALL_MODULE_JNDI_BINDINGS                = 0x1200;
     public static final int INSTALL_DEPENDS_ON_ANNOTATION               = 0x1210;
 
@@ -517,9 +523,8 @@ public enum Phase {
     public static final int INSTALL_JSF_ANNOTATIONS                     = 0x1600;
     public static final int INSTALL_JSF_VALIDATOR_FACTORY               = 0x1700;
     public static final int INSTALL_JDBC_DRIVER                         = 0x1800;
-    public static final int INSTALL_TRANSACTION_BINDINGS                = 0x1900;
     public static final int INSTALL_WELD_DEPLOYMENT                     = 0x1B00;
-    public static final int INSTALL_WELD_BEAN_MANAGER                   = 0x1C00;
+    public static final int INSTALL_WELD_BEAN_MANAGER_SERVICE = 0x1C00;
     public static final int INSTALL_JNDI_DEPENDENCIES                   = 0x1C01;
     public static final int INSTALL_CDI_VALIDATOR_FACTORY               = 0x1C02;
     public static final int INSTALL_WS_UNIVERSAL_META_DATA_MODEL        = 0x1C10;

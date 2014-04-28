@@ -25,7 +25,11 @@ package org.jboss.as.naming;
 import javax.naming.Name;
 import javax.naming.NamingException;
 
+import org.jboss.as.controller.ServiceVerificationHandler;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.util.NameParser;
+import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.value.InjectedValue;
 
 /**
@@ -78,4 +82,18 @@ public class ContextManagedReferenceFactory implements ContextListAndJndiViewMan
     public String getJndiViewInstanceValue() {
         return name;
     }
+
+    /**
+     *
+     * @param jndiName
+     * @param serviceTarget
+     * @param verificationHandler
+     * @return
+     */
+    public static ServiceController<?> bindContext(String jndiName, ServiceTarget serviceTarget, ServiceVerificationHandler verificationHandler) {
+        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(jndiName);
+        final ContextManagedReferenceFactory contextManagedReferenceFactory = new ContextManagedReferenceFactory(bindInfo.getBindName());
+        return bindInfo.builder(serviceTarget, verificationHandler).addService(contextManagedReferenceFactory, contextManagedReferenceFactory).addDependency(bindInfo.getParentContextServiceName(), NamingStore.class, contextManagedReferenceFactory.getNamingStoreInjectedValue()).install();
+    }
+
 }

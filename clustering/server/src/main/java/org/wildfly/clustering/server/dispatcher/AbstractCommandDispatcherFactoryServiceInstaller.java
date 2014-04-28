@@ -45,7 +45,7 @@ public abstract class AbstractCommandDispatcherFactoryServiceInstaller implement
     private final Logger logger = Logger.getLogger(this.getClass());
 
     private static ContextNames.BindInfo createBinding(String group) {
-        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "dispatcher", group).getAbsoluteName());
+        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "dispatcher", group));
     }
 
     @Override

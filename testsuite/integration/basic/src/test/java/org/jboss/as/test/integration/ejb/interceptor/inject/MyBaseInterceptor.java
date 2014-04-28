@@ -69,7 +69,7 @@ public class MyBaseInterceptor
    {
       this.baseTmMethod = tmMethod;
    }
-   @Resource(name="DefaultDS", mappedName="java:DefaultDS")
+   @Resource(name="DefaultDSMethod")
    public void setBaseDsMethod(DataSource dsMethod)
    {
       this.baseDsMethod = dsMethod;

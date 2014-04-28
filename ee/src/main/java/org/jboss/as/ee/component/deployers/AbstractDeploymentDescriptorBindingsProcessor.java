@@ -21,15 +21,6 @@
  */
 package org.jboss.as.ee.component.deployers;
 
-import java.lang.reflect.AccessibleObject;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.ComponentDescription;
@@ -43,6 +34,7 @@ import org.jboss.as.ee.component.InterceptorEnvironment;
 import org.jboss.as.ee.component.MethodInjectionTarget;
 import org.jboss.as.ee.component.ResourceInjectionConfiguration;
 import org.jboss.as.ee.component.ResourceInjectionTarget;
+import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -51,6 +43,14 @@ import org.jboss.as.server.deployment.reflect.DeploymentReflectionIndex;
 import org.jboss.metadata.javaee.spec.ResourceInjectionMetaData;
 import org.jboss.metadata.javaee.spec.ResourceInjectionTargetMetaData;
 import org.jboss.modules.Module;
+
+import java.lang.reflect.AccessibleObject;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.jboss.as.ee.utils.InjectionUtils.getInjectionTarget;
 
@@ -93,12 +93,16 @@ public abstract class AbstractDeploymentDescriptorBindingsProcessor implements D
 
         if (environment != null) {
             final List<BindingConfiguration> bindings = processDescriptorEntries(deploymentUnit, environment, description, null, module.getClassLoader(), deploymentReflectionIndex, applicationClasses);
-            description.getBindingConfigurations().addAll(bindings);
+            for (BindingConfiguration bindingConfiguration : bindings) {
+                description.getBindingConfigurations().addDeploymentBinding(bindingConfiguration);
+            }
         }
         for (final ComponentDescription componentDescription : description.getComponentDescriptions()) {
             if (componentDescription.getDeploymentDescriptorEnvironment() != null) {
                 final List<BindingConfiguration> bindings = processDescriptorEntries(deploymentUnit, componentDescription.getDeploymentDescriptorEnvironment(), componentDescription, componentDescription, module.getClassLoader(), deploymentReflectionIndex, applicationClasses);
-                componentDescription.getBindingConfigurations().addAll(bindings);
+                for (BindingConfiguration bindingConfiguration : bindings) {
+                    componentDescription.getBindingConfigurations().addDeploymentBinding(bindingConfiguration);
+                }
             }
         }
 

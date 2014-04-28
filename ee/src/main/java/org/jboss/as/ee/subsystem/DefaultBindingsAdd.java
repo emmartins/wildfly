@@ -26,6 +26,8 @@ import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.ServiceVerificationHandler;
 import org.jboss.as.ee.component.deployers.DefaultBindingsConfigurationProcessor;
+import org.jboss.as.naming.deployment.ContextNames;
+import org.jboss.as.naming.deployment.JndiName;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
@@ -39,6 +41,13 @@ import java.util.List;
  */
 public class DefaultBindingsAdd extends AbstractBoottimeAddStepHandler {
 
+    public static final ContextNames.BindInfo COMP_DEFAULT_CONTEXT_SERVICE_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultContextService"));
+    public static final ContextNames.BindInfo COMP_DEFAULT_MANAGED_EXECUTOR_SERVICE_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultManagedExecutorService"));
+    public static final ContextNames.BindInfo COMP_DEFAULT_MANAGED_SCHEDULED_EXECUTOR_SERVICE_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultManagedScheduledExecutorService"));
+    public static final ContextNames.BindInfo COMP_DEFAULT_MANAGED_THREAD_FACTORY_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultManagedThreadFactory"));
+    public static final ContextNames.BindInfo COMP_DEFAULT_DATA_SOURCE_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultDataSource"));
+    public static final ContextNames.BindInfo COMP_DEFAULT_JMS_CONNECTION_FACTORY_BIND_INFO = ContextNames.bindInfoFor(new JndiName("java:comp/DefaultJMSConnectionFactory"));
+
     private final DefaultBindingsConfigurationProcessor defaultBindingsConfigurationProcessor;
 
     public DefaultBindingsAdd(DefaultBindingsConfigurationProcessor defaultBindingsConfigurationProcessor) {
@@ -50,26 +59,32 @@ public class DefaultBindingsAdd extends AbstractBoottimeAddStepHandler {
     protected void performBoottime(OperationContext context, ModelNode operation, ModelNode model, ServiceVerificationHandler verificationHandler, List<ServiceController<?>> newControllers) throws OperationFailedException {
         if(model.hasDefined(DefaultBindingsResourceDefinition.CONTEXT_SERVICE)) {
             final String contextService = DefaultBindingsResourceDefinition.CONTEXT_SERVICE_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_CONTEXT_SERVICE_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(contextService)));
             defaultBindingsConfigurationProcessor.setContextService(contextService);
         }
         if(model.hasDefined(DefaultBindingsResourceDefinition.DATASOURCE)) {
             final String dataSource = DefaultBindingsResourceDefinition.DATASOURCE_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_DATA_SOURCE_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(dataSource)));
             defaultBindingsConfigurationProcessor.setDataSource(dataSource);
         }
         if(model.hasDefined(DefaultBindingsResourceDefinition.JMS_CONNECTION_FACTORY)) {
             final String jmsConnectionFactory = DefaultBindingsResourceDefinition.JMS_CONNECTION_FACTORY_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_JMS_CONNECTION_FACTORY_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(jmsConnectionFactory)));
             defaultBindingsConfigurationProcessor.setJmsConnectionFactory(jmsConnectionFactory);
         }
         if(model.hasDefined(DefaultBindingsResourceDefinition.MANAGED_EXECUTOR_SERVICE)) {
             final String managedExecutorService = DefaultBindingsResourceDefinition.MANAGED_EXECUTOR_SERVICE_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_MANAGED_EXECUTOR_SERVICE_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(managedExecutorService)));
             defaultBindingsConfigurationProcessor.setManagedExecutorService(managedExecutorService);
         }
         if(model.hasDefined(DefaultBindingsResourceDefinition.MANAGED_SCHEDULED_EXECUTOR_SERVICE)) {
             final String managedScheduledExecutorService = DefaultBindingsResourceDefinition.MANAGED_SCHEDULED_EXECUTOR_SERVICE_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_MANAGED_SCHEDULED_EXECUTOR_SERVICE_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(managedScheduledExecutorService)));
             defaultBindingsConfigurationProcessor.setManagedScheduledExecutorService(managedScheduledExecutorService);
         }
         if(model.hasDefined(DefaultBindingsResourceDefinition.MANAGED_THREAD_FACTORY)) {
             final String managedThreadFactory = DefaultBindingsResourceDefinition.MANAGED_THREAD_FACTORY_AD.resolveModelAttribute(context, model).asString();
+            newControllers.add(COMP_DEFAULT_MANAGED_THREAD_FACTORY_BIND_INFO.builder(context.getServiceTarget(), verificationHandler).installService(new JndiName(managedThreadFactory)));
             defaultBindingsConfigurationProcessor.setManagedThreadFactory(managedThreadFactory);
         }
 

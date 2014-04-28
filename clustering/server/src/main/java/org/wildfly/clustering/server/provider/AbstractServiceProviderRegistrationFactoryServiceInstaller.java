@@ -46,7 +46,7 @@ public abstract class AbstractServiceProviderRegistrationFactoryServiceInstaller
     private final Logger logger = Logger.getLogger(this.getClass());
 
     private static ContextNames.BindInfo createBinding(String group) {
-        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "providers", group, CacheContainer.DEFAULT_CACHE_ALIAS).getAbsoluteName());
+        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, "clustering", "providers", group, CacheContainer.DEFAULT_CACHE_ALIAS));
     }
 
     @Override

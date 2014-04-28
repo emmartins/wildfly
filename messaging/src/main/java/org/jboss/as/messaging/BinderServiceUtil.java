@@ -70,7 +70,7 @@ public class BinderServiceUtil {
         aliasBinderService.getManagedObjectInjector().inject(new AliasManagedReferenceFactory(bindInfo.getAbsoluteJndiName()));
 
         serviceTarget.addService(aliasBindInfo.getBinderServiceName(), aliasBinderService)
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, aliasBinderService.getNamingStoreInjector())
+                .addDependency(aliasBindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, aliasBinderService.getNamingStoreInjector())
                 .addDependency(bindInfo.getBinderServiceName())
                 .addListener(new AbstractServiceListener<ManagedReferenceFactory>() {
                     @Override

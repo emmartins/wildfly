@@ -22,16 +22,11 @@
 
 package org.jboss.as.ee.concurrent.service;
 
-import org.jboss.as.naming.ImmediateManagedReferenceFactory;
-import org.jboss.as.naming.ManagedReferenceFactory;
-import org.jboss.as.naming.ServiceBasedNamingStore;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
-import org.jboss.msc.value.ImmediateValue;
 
 /**
  * Abstract service responsible for managing the lifecyle of EE Concurrent managed resources.
@@ -53,7 +48,7 @@ abstract class EEConcurrentAbstractService<T> implements Service<T> {
     public void start(final StartContext context) throws StartException {
         startValue(context);
         // every ee concurrent resource is bound to jndi, so EE components may reference it.
-        bindValueToJndi(context);
+        ContextNames.bindInfoFor(jndiName).bind(context.getChildTarget(), getValue());
     }
 
     /**
@@ -62,16 +57,6 @@ abstract class EEConcurrentAbstractService<T> implements Service<T> {
      * @throws StartException
      */
     abstract void startValue(final StartContext context) throws StartException;
-
-    private void bindValueToJndi(final StartContext context) {
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(jndiName);
-        final BinderService binderService = new BinderService(bindInfo.getBindName());
-        final ImmediateManagedReferenceFactory managedReferenceFactory = new ImmediateManagedReferenceFactory(getValue());
-        context.getChildTarget().addService(bindInfo.getBinderServiceName(),binderService)
-                .addInjectionValue(binderService.getManagedObjectInjector(),new ImmediateValue<ManagedReferenceFactory>(managedReferenceFactory))
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector())
-                .install();
-    }
 
     public void stop(final StopContext context) {
         stopValue(context);

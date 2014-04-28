@@ -22,15 +22,10 @@
 
 package org.jboss.as.jacorb.service;
 
-import java.net.InetSocketAddress;
-import java.security.AccessController;
-import java.util.Properties;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
-
-import org.jboss.as.jacorb.logging.JacORBLogger;
 import org.jboss.as.jacorb.JacORBSubsystemConstants;
+import org.jboss.as.jacorb.logging.JacORBLogger;
 import org.jboss.as.jacorb.naming.jndi.CorbaUtils;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.network.NetworkUtils;
 import org.jboss.as.network.SocketBinding;
 import org.jboss.as.server.CurrentServiceContainer;
@@ -38,13 +33,18 @@ import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceContainer;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
 import org.jboss.msc.value.InjectedValue;
 import org.omg.CORBA.ORB;
 import org.wildfly.security.manager.WildFlySecurityManager;
+
+import java.net.InetSocketAddress;
+import java.security.AccessController;
+import java.util.Properties;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * <p>
@@ -134,9 +134,10 @@ public class CorbaORBService implements Service<ORB> {
             Thread orbThread = SecurityActions.createThread(new ORBRunner(this.orb), "ORB Run Thread");
             orbThread.start();
 
-            // bind the ORB to JNDI under java:/jboss/ORB.
-            ServiceTarget target = context.getChildTarget();
-            CorbaServiceUtil.bindObject(target, "ORB", this.orb);
+            // bind the ORB to JNDI under java:/jboss/ORB and java:comp/ORB.
+            ContextNames.bindInfoFor("java:jboss/ORB").bind(context.getChildTarget(), this.orb);
+            ContextNames.bindInfoFor("java:comp/ORB").bind(context.getChildTarget(), this.orb);
+
         } catch (Exception e) {
             throw new StartException(e);
         }

@@ -21,27 +21,21 @@
  */
 package org.jboss.as.ee.beanvalidation;
 
-import javax.validation.ValidatorFactory;
-
-import org.jboss.as.ee.component.ComponentDescription;
-import org.jboss.as.ee.component.ComponentNamingMode;
+import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.component.FixedInjectionSource;
+import org.jboss.as.ee.naming.ModuleBindingConfigurations;
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.ee.weld.WeldDeploymentMarker;
-import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.ValueManagedReferenceFactory;
-import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
 import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.modules.Module;
-import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
+
+import javax.validation.ValidatorFactory;
 
 /**
  * Creates a bean validation factory and adds it to the deployment and binds it to JNDI.
@@ -64,53 +58,15 @@ public class BeanValidationFactoryDeployer implements DeploymentUnitProcessor {
         final LazyValidatorFactory factory  = new LazyValidatorFactory(module.getClassLoader());
         deploymentUnit.putAttachment(BeanValidationAttachments.VALIDATOR_FACTORY, factory);
 
-        bindFactoryToJndi(factory,deploymentUnit,phaseContext,moduleDescription);
-
-    }
-
-    private void bindFactoryToJndi(LazyValidatorFactory factory, DeploymentUnit deploymentUnit, DeploymentPhaseContext phaseContext,EEModuleDescription moduleDescription) {
-
-        if(moduleDescription == null) {
+        // add the bindings to the module description (except for EARs)
+        if (DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
             return;
         }
-
-        final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
-        //if this is a war we need to bind to the modules comp namespace
-        if(DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit) || DeploymentTypeMarker.isType(DeploymentType.APPLICATION_CLIENT, deploymentUnit)) {
-            final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(), moduleDescription.getModuleName());
-            bindServices(factory, serviceTarget, moduleDescription, moduleDescription.getModuleName(), moduleContextServiceName);
-        }
-
-        for(ComponentDescription component : moduleDescription.getComponentDescriptions()) {
-            if(component.getNamingMode() == ComponentNamingMode.CREATE) {
-                final ServiceName compContextServiceName = ContextNames.contextServiceNameOfComponent(moduleDescription.getApplicationName(),moduleDescription.getModuleName(),component.getComponentName());
-                bindServices(factory, serviceTarget, moduleDescription, component.getComponentName(), compContextServiceName);
-            }
-        }
-
+        final ModuleBindingConfigurations moduleBindingConfigurations = moduleDescription.getBindingConfigurations();
+        moduleBindingConfigurations.addPlatformBindingToAllComponents(new BindingConfiguration("java:comp/ValidatorFactory", new FixedInjectionSource(factory)));
+        moduleBindingConfigurations.addPlatformBindingToAllComponents(new BindingConfiguration("java:comp/Validator", new FixedInjectionSource(new ValidatorJndiInjectable(factory), factory)));
     }
 
-    /**
-     *
-     * @param factory The ValidatorFactory to bind
-     * @param serviceTarget The service target
-     * @param contextServiceName The service name of the context to bind to
-     */
-    private void bindServices(LazyValidatorFactory factory, ServiceTarget serviceTarget, EEModuleDescription description, String componentName, ServiceName contextServiceName) {
-
-        BinderService validatorFactoryBindingService = new BinderService("ValidatorFactory");
-        validatorFactoryBindingService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(factory)));
-        serviceTarget.addService(contextServiceName.append("ValidatorFactory"), validatorFactoryBindingService)
-            .addDependency(contextServiceName, ServiceBasedNamingStore.class, validatorFactoryBindingService.getNamingStoreInjector())
-            .install();
-
-        BinderService validatorBindingService = new BinderService("Validator");
-        validatorBindingService.getManagedObjectInjector().inject(new ValidatorJndiInjectable(factory));
-        serviceTarget.addService(contextServiceName.append("Validator"), validatorBindingService)
-            .addDependency(contextServiceName, ServiceBasedNamingStore.class, validatorBindingService.getNamingStoreInjector())
-            .install();
-
-    }
     @Override
     public void undeploy(DeploymentUnit context) {
         ValidatorFactory validatorFactory = context.getAttachment(BeanValidationAttachments.VALIDATOR_FACTORY);

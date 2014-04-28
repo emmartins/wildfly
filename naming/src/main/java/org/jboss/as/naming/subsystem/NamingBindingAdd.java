@@ -21,18 +21,6 @@
  */
 package org.jboss.as.naming.subsystem;
 
-import static org.jboss.as.naming.subsystem.NamingSubsystemModel.TYPE;
-
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Arrays;
-import java.util.Hashtable;
-import java.util.List;
-import java.util.Map;
-
-import javax.naming.InitialContext;
-import javax.naming.spi.ObjectFactory;
-
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
@@ -46,23 +34,29 @@ import org.jboss.as.naming.ExternalContextObjectFactory;
 import org.jboss.as.naming.ImmediateManagedReference;
 import org.jboss.as.naming.ManagedReference;
 import org.jboss.as.naming.ManagedReferenceFactory;
-import org.jboss.as.naming.logging.NamingLogger;
-import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.ValueManagedReferenceFactory;
 import org.jboss.as.naming.context.external.ExternalContexts;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
-import org.jboss.as.naming.service.ExternalContextBinderService;
+import org.jboss.as.naming.deployment.JndiName;
+import org.jboss.as.naming.logging.NamingLogger;
 import org.jboss.as.naming.service.ExternalContextsService;
 import org.jboss.dmr.ModelNode;
 import org.jboss.modules.Module;
 import org.jboss.modules.ModuleIdentifier;
 import org.jboss.modules.ModuleLoadException;
-import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.msc.inject.InjectionException;
+import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceController;
-import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.wildfly.security.manager.WildFlySecurityManager;
+
+import javax.naming.InitialContext;
+import javax.naming.spi.ObjectFactory;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Hashtable;
+import java.util.List;
+import java.util.Map;
+
+import static org.jboss.as.naming.subsystem.NamingSubsystemModel.TYPE;
 
 /**
  * A {@link org.jboss.as.controller.AbstractAddStepHandler} to handle the add operation for simple JNDI bindings
@@ -71,8 +65,6 @@ import org.wildfly.security.manager.WildFlySecurityManager;
  * @author Eduardo Martins
  */
 public class NamingBindingAdd extends AbstractAddStepHandler {
-
-    private static final String[] GLOBAL_NAMESPACES = {"java:global", "java:jboss", "java:/"};
 
     static final NamingBindingAdd INSTANCE = new NamingBindingAdd();
 
@@ -87,32 +79,26 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
     }
 
     void installRuntimeServices(final OperationContext context, final String name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
-        boolean allowed = false;
-        for (String ns : GLOBAL_NAMESPACES) {
-            if (name.startsWith(ns)) {
-                allowed = true;
-                break;
-            }
-        }
-        if (!allowed) {
-            throw NamingLogger.ROOT_LOGGER.invalidNamespaceForBinding(name, Arrays.toString(GLOBAL_NAMESPACES));
+        final JndiName jndiName = new JndiName(name);
+        if (!jndiName.isJava()) {
+            throw NamingLogger.ROOT_LOGGER.invalidNamespaceForBinding(name);
         }
 
         final BindingType type = BindingType.forName(NamingBindingResourceDefinition.BINDING_TYPE.resolveModelAttribute(context, model).asString());
         if (type == BindingType.SIMPLE) {
-            installSimpleBinding(context, name, model, verificationHandler, newControllers);
+            installSimpleBinding(context, jndiName, model, verificationHandler, newControllers);
         } else if (type == BindingType.OBJECT_FACTORY) {
-            installObjectFactory(context, name, model, verificationHandler, newControllers);
+            installObjectFactory(context, jndiName, model, verificationHandler, newControllers);
         } else if (type == BindingType.LOOKUP) {
-            installLookup(context, name, model, verificationHandler, newControllers);
+            installLookup(context, jndiName, model, verificationHandler, newControllers);
         } else if (type == BindingType.EXTERNAL_CONTEXT) {
-            installExternalContext(context, name, model, verificationHandler, newControllers);
+            installExternalContext(context, jndiName, model, verificationHandler, newControllers);
         } else {
             throw NamingLogger.ROOT_LOGGER.unknownBindingType(type.toString());
         }
     }
 
-    void installSimpleBinding(final OperationContext context, final String name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
+    void installSimpleBinding(final OperationContext context, final JndiName name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
 
         final String value = NamingBindingResourceDefinition.VALUE.resolveModelAttribute(context, model).asString();
         final String type;
@@ -121,32 +107,15 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
         } else {
             type = null;
         }
-
         Object bindValue = coerceToType(value, type);
-
-        final ServiceTarget serviceTarget = context.getServiceTarget();
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(name);
-
-        final BinderService binderService = new BinderService(name, bindValue);
-        binderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(bindValue)));
-
-        ServiceBuilder<ManagedReferenceFactory> builder = serviceTarget.addService(bindInfo.getBinderServiceName(), binderService)
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector());
-
-        if (verificationHandler != null) {
-            builder.addListener(verificationHandler);
-        }
-
+        ServiceController<?> serviceController = ContextNames.bindInfoFor(name).builder(context.getServiceTarget(), verificationHandler).installService(bindValue);
         if (newControllers != null) {
-            newControllers.add(
-                    builder.install());
-        } else {
-            builder.install();
+            newControllers.add(serviceController);
         }
     }
 
 
-    void installObjectFactory(final OperationContext context, final String name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
+    void installObjectFactory(final OperationContext context, final JndiName name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
 
         final ModuleIdentifier moduleID = ModuleIdentifier.fromString(NamingBindingResourceDefinition.MODULE.resolveModelAttribute(context, model).asString());
         final String className = NamingBindingResourceDefinition.CLASS.resolveModelAttribute(context, model).asString();
@@ -176,13 +145,8 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
             WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(cl);
         }
 
-        final ServiceTarget serviceTarget = context.getServiceTarget();
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(name);
-
         final Hashtable<String, String> environment = getObjectFactoryEnvironment(context, model);
-
-        final BinderService binderService = new BinderService(name, objectFactoryClassInstance);
-        binderService.getManagedObjectInjector().inject(new ContextListAndJndiViewManagedReferenceFactory() {
+        final ManagedReferenceFactory managedReferenceFactory = new ContextListAndJndiViewManagedReferenceFactory() {
             @Override
             public ManagedReference getReference() {
                 try {
@@ -195,45 +159,22 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
 
             @Override
             public String getInstanceClassName() {
-                final ClassLoader cl = WildFlySecurityManager.getCurrentContextClassLoaderPrivileged();
-                try {
-                    WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(objectFactoryClassInstance.getClass().getClassLoader());
-                    final Object value = getReference().getInstance();
-                    return value != null ? value.getClass().getName() : ContextListManagedReferenceFactory.DEFAULT_INSTANCE_CLASS_NAME;
-                } finally {
-                    WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(cl);
-                }
+                return objectFactoryClassInstance.getClass().getName();
             }
 
             @Override
             public String getJndiViewInstanceValue() {
-                final ClassLoader cl = WildFlySecurityManager.getCurrentContextClassLoaderPrivileged();
-                try {
-                    WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(objectFactoryClassInstance.getClass().getClassLoader());
-                    return String.valueOf(getReference().getInstance());
-                } finally {
-                    WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(cl);
-                }
+                return ContextListAndJndiViewManagedReferenceFactory.DEFAULT_JNDI_VIEW_INSTANCE_VALUE;
             }
-        });
-
-        ServiceBuilder<ManagedReferenceFactory> builder = serviceTarget.addService(bindInfo.getBinderServiceName(), binderService)
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector());
-
-        if (verificationHandler != null) {
-            builder.addListener(verificationHandler);
-        }
-
+        };
+        ServiceController<?> serviceController = ContextNames.bindInfoFor(name).builder(context.getServiceTarget(), verificationHandler).installService(managedReferenceFactory, objectFactoryClassInstance);
         if (newControllers != null) {
-            newControllers.add(
-                    builder.install());
-        } else {
-            builder.install();
+            newControllers.add(serviceController);
         }
     }
 
 
-    void installExternalContext(final OperationContext context, final String name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
+    void installExternalContext(final OperationContext context, final JndiName name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
 
         final String moduleID = NamingBindingResourceDefinition.MODULE.resolveModelAttribute(context, model).asString();
         final String className = NamingBindingResourceDefinition.CLASS.resolveModelAttribute(context, model).asString();
@@ -242,16 +183,12 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
 
         final ObjectFactory objectFactoryClassInstance = new ExternalContextObjectFactory();
 
-        final ServiceTarget serviceTarget = context.getServiceTarget();
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(name);
-
         final Hashtable<String, String> environment = getObjectFactoryEnvironment(context, model);
         environment.put(ExternalContextObjectFactory.CACHE_CONTEXT, Boolean.toString(cache));
         environment.put(ExternalContextObjectFactory.INITIAL_CONTEXT_CLASS, className);
         environment.put(ExternalContextObjectFactory.INITIAL_CONTEXT_MODULE, moduleID);
 
-        final ExternalContextBinderService binderService = new ExternalContextBinderService(name, objectFactoryClassInstance);
-        binderService.getManagedObjectInjector().inject(new ContextListAndJndiViewManagedReferenceFactory() {
+        final ManagedReferenceFactory managedReferenceFactory = new ContextListAndJndiViewManagedReferenceFactory() {
             @Override
             public ManagedReference getReference() {
                 try {
@@ -277,21 +214,32 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
                     WildFlySecurityManager.setCurrentContextClassLoaderPrivileged(cl);
                 }
             }
-        });
+        };
+        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(name);
+        // an injector to update the external contexts registry
+        final Injector<ExternalContexts> externalContextsInjector = new Injector<ExternalContexts>() {
+            private ExternalContexts externalContexts;
+            @Override
+            public void inject(ExternalContexts value) throws InjectionException {
+                value.addExternalContext(bindInfo.getBinderServiceName());
+                externalContexts = value;
+            }
 
-        ServiceBuilder<ManagedReferenceFactory> builder = serviceTarget.addService(bindInfo.getBinderServiceName(), binderService)
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector())
-                .addDependency(ExternalContextsService.SERVICE_NAME, ExternalContexts.class, binderService.getExternalContextsInjector());
+            @Override
+            public void uninject() {
+                if (externalContexts != null) {
+                    externalContexts.removeExternalContext(bindInfo.getBinderServiceName());
+                    externalContexts = null;
+                }
+            }
+        };
 
-        if (verificationHandler != null) {
-            builder.addListener(verificationHandler);
-        }
-
+        ServiceController<?> serviceController = bindInfo.builder(context.getServiceTarget(), verificationHandler)
+                .addService(managedReferenceFactory, objectFactoryClassInstance)
+                .addDependency(ExternalContextsService.SERVICE_NAME, ExternalContexts.class, externalContextsInjector)
+                .install();
         if (newControllers != null) {
-            newControllers.add(
-                    builder.install());
-        } else {
-            builder.install();
+            newControllers.add(serviceController);
         }
     }
 
@@ -303,15 +251,10 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
         return environment;
     }
 
-    void installLookup(final OperationContext context, final String name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
+    void installLookup(final OperationContext context, final JndiName name, final ModelNode model, ServiceVerificationHandler verificationHandler, final List<ServiceController<?>> newControllers) throws OperationFailedException {
 
         final String lookup = NamingBindingResourceDefinition.LOOKUP.resolveModelAttribute(context, model).asString();
-
-        final ServiceTarget serviceTarget = context.getServiceTarget();
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(name);
-
-        final BinderService binderService = new BinderService(name);
-        binderService.getManagedObjectInjector().inject(new ContextListAndJndiViewManagedReferenceFactory() {
+        final ManagedReferenceFactory managedReferenceFactory = new ContextListAndJndiViewManagedReferenceFactory() {
             @Override
             public ManagedReference getReference() {
                 try {
@@ -332,20 +275,10 @@ public class NamingBindingAdd extends AbstractAddStepHandler {
             public String getJndiViewInstanceValue() {
                 return String.valueOf(getReference().getInstance());
             }
-        });
-
-        ServiceBuilder<ManagedReferenceFactory> builder = serviceTarget.addService(bindInfo.getBinderServiceName(), binderService)
-                .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector());
-
-        if (verificationHandler != null) {
-            builder.addListener(verificationHandler);
-        }
-
+        };
+        ServiceController<?> serviceController = ContextNames.bindInfoFor(name).builder(context.getServiceTarget(), verificationHandler).installService(managedReferenceFactory, managedReferenceFactory);
         if (newControllers != null) {
-            newControllers.add(
-                    builder.install());
-        } else {
-            builder.install();
+            newControllers.add(serviceController);
         }
     }
 

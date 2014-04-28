@@ -90,7 +90,7 @@ public class JMSContextProducer {
      */
     @Produces
     public JMSContext getJMSContext(InjectionPoint injectionPoint) throws NamingException {
-        String connectionFactoryLookup = DefaultJMSConnectionFactoryBindingProcessor.COMP_DEFAULT_JMS_CONNECTION_FACTORY;
+        String connectionFactoryLookup = "java:comp/DefaultJMSConnectionFactory";
         String userName = null;
         String password = null;
         int ackMode = AUTO_ACKNOWLEDGE;

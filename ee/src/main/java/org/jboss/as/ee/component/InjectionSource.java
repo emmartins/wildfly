@@ -22,6 +22,7 @@
 
 package org.jboss.as.ee.component;
 
+import org.jboss.as.ee.naming.DeploymentBindings;
 import org.jboss.as.naming.ManagedReferenceFactory;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -55,12 +56,14 @@ public abstract class InjectionSource {
         private final String componentName;
         private final String moduleName;
         private final String applicationName;
+        private final DeploymentBindings deploymentBindings;
 
-        public ResolutionContext(final boolean compUsesModule, final String componentName, final String moduleName, final String applicationName) {
+        public ResolutionContext(final boolean compUsesModule, final String componentName, final String moduleName, final String applicationName, final DeploymentBindings deploymentBindings) {
             this.compUsesModule = compUsesModule;
             this.componentName = componentName;
             this.moduleName = moduleName;
             this.applicationName = applicationName;
+            this.deploymentBindings = deploymentBindings;
         }
 
         /**
@@ -97,6 +100,19 @@ public abstract class InjectionSource {
          */
         public String getApplicationName() {
             return applicationName;
+        }
+
+        /**
+         *
+         * @return
+         */
+        public DeploymentBindings getDeploymentBindings() {
+            return deploymentBindings;
+        }
+
+        @Override
+        public String toString() {
+            return "ResolutionContext[app="+applicationName+", module="+moduleName+", comp="+componentName+"]";
         }
     }
 }

@@ -31,15 +31,15 @@ public class JndiNameFactory {
     public static final String DEFAULT_JNDI_NAMESPACE = "java:jboss";
 
     public static JndiName parse(String value) {
-        return value.startsWith("java:") ? JndiName.of(value) : createJndiName(DEFAULT_JNDI_NAMESPACE, value.startsWith("/") ? value.substring(1) : value);
+        return value.startsWith("java:") ? new JndiName(value) : createJndiName(DEFAULT_JNDI_NAMESPACE, value.startsWith("/") ? value.substring(1) : value);
     }
 
     public static JndiName createJndiName(String namespace, String... contexts) {
-        JndiName name = JndiName.of(namespace);
+        final StringBuilder stringBuilder = new StringBuilder(namespace);
         for (String context: contexts) {
-            name = name.append(context);
+            stringBuilder.append('/').append(context);
         }
-        return name;
+        return new JndiName(stringBuilder.toString());
     }
 
     private JndiNameFactory() {

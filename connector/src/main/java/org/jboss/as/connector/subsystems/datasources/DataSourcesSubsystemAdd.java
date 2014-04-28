@@ -24,7 +24,6 @@ package org.jboss.as.connector.subsystems.datasources;
 
 import java.util.List;
 
-import org.jboss.as.connector.deployers.datasource.DefaultDataSourceBindingProcessor;
 import org.jboss.as.connector.deployers.datasource.DefaultDataSourceResourceReferenceProcessor;
 import org.jboss.as.connector.deployers.ds.DsDeploymentActivator;
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
@@ -60,7 +59,6 @@ class DataSourcesSubsystemAdd extends AbstractBoottimeAddStepHandler {
             protected void execute(DeploymentProcessorTarget processorTarget) {
                 dsDeploymentActivator.activateProcessors(processorTarget);
                 processorTarget.addDeploymentProcessor(DataSourcesExtension.SUBSYSTEM_NAME, Phase.STRUCTURE, Phase.STRUCTURE_DATASOURCE_RESOURCE_INJECTION, new DefaultDataSourceResourceReferenceProcessor());
-                processorTarget.addDeploymentProcessor(DataSourcesExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_DEFAULT_BINDINGS_DATASOURCE, new DefaultDataSourceBindingProcessor());
             }
         }, OperationContext.Stage.RUNTIME);
 

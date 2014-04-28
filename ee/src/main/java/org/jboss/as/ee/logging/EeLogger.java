@@ -22,36 +22,37 @@
 
 package org.jboss.as.ee.logging;
 
-import static org.jboss.logging.Logger.Level.WARN;
-
-import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.Method;
-import java.util.Collection;
-import java.util.Set;
-
-import javax.xml.namespace.QName;
-import javax.xml.stream.Location;
-import javax.xml.stream.XMLStreamException;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.ComponentConfiguration;
 import org.jboss.as.ee.component.ComponentInstance;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.concurrent.ConcurrentContext;
+import org.jboss.as.naming.deployment.JndiName;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.invocation.proxy.MethodIdentifier;
 import org.jboss.jandex.AnnotationTarget;
 import org.jboss.jandex.DotName;
 import org.jboss.jandex.MethodInfo;
 import org.jboss.logging.BasicLogger;
+import org.jboss.logging.Logger;
 import org.jboss.logging.annotations.Cause;
 import org.jboss.logging.annotations.LogMessage;
-import org.jboss.logging.Logger;
 import org.jboss.logging.annotations.Message;
 import org.jboss.logging.annotations.MessageLogger;
 import org.jboss.logging.annotations.Param;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.vfs.VirtualFile;
+
+import javax.xml.namespace.QName;
+import javax.xml.stream.Location;
+import javax.xml.stream.XMLStreamException;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.Set;
+
+import static org.jboss.logging.Logger.Level.WARN;
 
 /**
  * @author <a href="mailto:jperkins@redhat.com">James R. Perkins</a>
@@ -546,7 +547,7 @@ public interface EeLogger extends BasicLogger {
      * @return an {@link IllegalArgumentException} for the error.
      */
     @Message(id = 47, value = "Incompatible conflicting binding at %s source: %s")
-    IllegalArgumentException conflictingBinding(String bindingName, InjectionSource source);
+    IllegalArgumentException conflictingBinding(JndiName bindingName, InjectionSource source);
 
     /**
      * Creates an exception indicating the default constructor for the class, represented by the {@code clazz}
@@ -1083,4 +1084,18 @@ public interface EeLogger extends BasicLogger {
      */
     @Message(id = 109, value = "A class must not declare more than one AroundInvoke method. %s has %s methods annotated.")
     DeploymentUnitProcessingException aroundInvokeAnnotationUsedTooManyTimes(DotName className, int numberOfAnnotatedMethods);
+
+    /**
+     * Creates an exception indicating a lookup failed, wrt {@link javax.annotation.Resource} injection.
+     *
+     * @param jndiName the JNDI name.
+     *
+     * @return a {@link RuntimeException} for the error.
+     */
+    @Message(id = 110, value = "Resource lookup for injection failed: %s")
+    RuntimeException resourceLookupForInjectionFailed(String jndiName, @Cause Throwable cause);
+
+
+    @Message(id = 111, value = "Failed to obtain the shared bindings for the scoped Java EE JNDI namespaces.")
+    DeploymentUnitProcessingException failedToObtainSharedContextBindings(@Cause Throwable e);
 }

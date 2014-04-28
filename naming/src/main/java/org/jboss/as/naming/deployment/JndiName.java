@@ -22,107 +22,198 @@
 
 package org.jboss.as.naming.deployment;
 
-import java.io.Serializable;
-
+import org.jboss.as.naming.InitialContext;
 import org.jboss.as.naming.logging.NamingLogger;
+import java.io.Serializable;
 
 /**
  * Utility object used to easily manged the construction and management of JNDI names.
  *
- * @author John E. Bailey
+ * @author Eduardo Martins
  */
 public class JndiName implements Serializable, Comparable<JndiName> {
-    private static final long serialVersionUID = 3748117883355718029L;
-    private static final String ENTRY_SEPARATOR = "/";
 
-    private final JndiName parent;
-    private final String local;
+    private final String name;
+    private final String scheme;
 
-    private JndiName(final JndiName parent, final String local) {
-        this.parent = parent;
-        this.local = local;
-    }
+    private boolean java;
+    private boolean javaComp;
+    private boolean javaModule;
+    private boolean javaApp;
+    private boolean javaGlobal;
+    private boolean javaJBoss;
+    private boolean javaJBossExported;
 
     /**
-     * Get the local JNDI entry name.  Eg.  java:comp/enc => enc
      *
-     * @return The local JNDI entry name
+     * @param name
      */
-    public String getLocalName() {
-        return local;
+    public JndiName(String name) {
+        if (name == null) {
+            throw NamingLogger.ROOT_LOGGER.nullVar("name");
+        }
+        final String scheme = InitialContext.getURLScheme(name);
+        if (scheme == null) {
+            this.name = "java:comp/env/" + name;
+            this.scheme = "java";
+            javaComp();
+        } else {
+            this.name = name;
+            this.scheme = scheme;
+            if ("java".equals(scheme)) {
+                final String nameWithoutScheme = name.substring(5);
+                if (nameWithoutScheme.startsWith("comp/")) {
+                    javaComp();
+                } else if (nameWithoutScheme.startsWith("module/")) {
+                    javaModule();
+                } else if (nameWithoutScheme.startsWith("app/")) {
+                    javaApp();
+                } else if (nameWithoutScheme.startsWith("global/")) {
+                    javaGlobal();
+                } else if (nameWithoutScheme.startsWith("jboss/")) {
+                    if (nameWithoutScheme.startsWith( "exported/", "jboss/".length())) {
+                        javaJBossExported();
+                    } else {
+                        javaJBoss();
+                    }
+                } else {
+                    java();
+                }
+            }
+        }
     }
 
     /**
-     * Get the parent JNDI name.  Eg.  java:comp/enc => java:comp
      *
-     * @return The parent JNDI name
+     * @return
      */
-    public JndiName getParent() {
-        return parent;
+    public String getScheme() {
+        return scheme;
     }
 
     /**
-     * Get the absolute JNDI name as a string.
      *
-     * @return The absolute JNDI name as a string
+     * @return
      */
     public String getAbsoluteName() {
-        final StringBuilder absolute = new StringBuilder();
-        if (parent != null) {
-            absolute.append(parent).append(ENTRY_SEPARATOR);
-        }
-        absolute.append(local);
-        return absolute.toString();
+        return name;
     }
 
     /**
-     * Create a new JNDI name by appending a new local entry name to this name.
      *
-     * @param local The new local part to append
-     * @return A new JNDI name
+     * @return
      */
-    public JndiName append(final String local) {
-        return new JndiName(this, local);
+    public boolean isJava() {
+        return java;
     }
 
     /**
-     * Create a new instance of the JndiName by breaking the provided string format into a JndiName parts.
      *
-     * @param name The string representation of a JNDI name.
-     * @return The JndiName representation
+     * @return
      */
-    public static JndiName of(final String name) {
-        if(name == null || name.isEmpty()) throw NamingLogger.ROOT_LOGGER.invalidJndiName(name);
-        final String[] parts = name.split(ENTRY_SEPARATOR);
-        JndiName current = null;
-        for(String part : parts) {
-            current = new JndiName(current, part);
-        }
-        return current;
+    public boolean isJavaComp() {
+        return javaComp;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public boolean isJavaModule() {
+        return javaModule;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public boolean isJavaApp() {
+        return javaApp;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public boolean isJavaGlobal() {
+        return javaGlobal;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public boolean isJavaJBoss() {
+        return javaJBoss;
+    }
+
+    /**
+     *
+     * @return
+     */
+    public boolean isJavaJBossExported() {
+        return javaJBossExported;
+    }
+
+    private void javaComp() {
+        this.javaComp = true;
+        java();
+    }
+
+    private void javaModule() {
+        this.javaModule = true;
+        java();
+    }
+
+    private void javaApp() {
+        this.javaApp = true;
+        java();
+    }
+
+    private void javaGlobal() {
+        this.javaGlobal = true;
+        java();
+    }
+
+    private void javaJBoss() {
+        this.javaJBoss = true;
+        java();
+    }
+
+    private void javaJBossExported() {
+        this.javaJBossExported = true;
+        javaJBoss();
+    }
+
+    private void java() {
+        this.java = true;
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        final JndiName jndiName = (JndiName) o;
-        return !(local != null ? !local.equals(jndiName.local) : jndiName.local != null) && !(parent != null ? !parent.equals(jndiName.parent) : jndiName.parent != null);
+
+        JndiName name1 = (JndiName) o;
+
+        if (!name.equals(name1.name)) return false;
+
+        return true;
     }
 
     @Override
     public int hashCode() {
-        int result = parent != null ? parent.hashCode() : 0;
-        result = 31 * result + (local != null ? local.hashCode() : 0);
-        return result;
+        return name.hashCode();
     }
 
+    @Override
+    public int compareTo(JndiName other) {
+        return this.name.compareTo(other.name);
+    }
 
+    @Override
     public String toString() {
         return getAbsoluteName();
     }
 
-    @Override
-    public int compareTo(final JndiName other) {
-        return getAbsoluteName().compareTo(other.getAbsoluteName());
-    }
 }

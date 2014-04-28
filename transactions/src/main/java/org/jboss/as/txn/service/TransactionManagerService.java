@@ -22,15 +22,18 @@
 
 package org.jboss.as.txn.service;
 
-import javax.transaction.TransactionManager;
-
 import org.jboss.as.controller.ServiceVerificationHandler;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.msc.service.AbstractService;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
+import org.jboss.msc.service.StartContext;
+import org.jboss.msc.service.StartException;
 import org.jboss.msc.value.InjectedValue;
+
+import javax.transaction.TransactionManager;
 
 /**
  * Service responsible for getting the {@link TransactionManager}.
@@ -55,5 +58,11 @@ public class TransactionManagerService extends AbstractService<TransactionManage
     @Override
     public TransactionManager getValue() throws IllegalStateException {
         return injectedArjunaTM.getValue().getTransactionManager();
+    }
+
+    @Override
+    public void start(StartContext context) throws StartException {
+        ContextNames.bindInfoFor("java:jboss/TransactionManager").bind(context.getChildTarget(), getValue());
+        ContextNames.bindInfoFor("java:/TransactionManager").bind(context.getChildTarget(), getValue());
     }
 }

@@ -1,26 +1,10 @@
 package org.jboss.as.mail.extension;
 
 
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.HOST;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PORT;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REMOTE_DESTINATION_OUTBOUND_SOCKET_BINDING;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
-
-import java.io.IOException;
-import java.util.List;
-
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.PathElement;
-import org.jboss.as.controller.extension.ExtensionRegistry;
-import org.jboss.as.controller.registry.ManagementResourceRegistration;
-import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.NamingService;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.service.WritableServiceBasedNamingStoreService;
 import org.jboss.as.subsystem.test.AbstractSubsystemBaseTest;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
 import org.jboss.as.subsystem.test.ControllerInitializer;
@@ -31,6 +15,18 @@ import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceTarget;
 import org.junit.Assert;
 import org.junit.Test;
+
+import java.io.IOException;
+import java.util.List;
+
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.HOST;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PORT;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.REMOTE_DESTINATION_OUTBOUND_SOCKET_BINDING;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
 
 /**
  * @author <a href="tomaz.cerar@gmail.com">Tomaz Cerar</a>
@@ -115,10 +111,10 @@ public class MailSubsystem10TestCase extends AbstractSubsystemBaseTest {
         @Override
         protected void addExtraServices(ServiceTarget target) {
             super.addExtraServices(target);
-            target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new NamingStoreService())
+            target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_NAME))
                             .setInitialMode(ServiceController.Mode.ACTIVE)
                             .install();
-            target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new NamingStoreService())
+            target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_JBOSS_NAME))
                             .setInitialMode(ServiceController.Mode.ACTIVE)
                             .install();
 

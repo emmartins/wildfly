@@ -133,7 +133,7 @@ public class ObjectFactoryWithEnvironmentBindingTestCase {
         private ModelNode createAddress() {
             final ModelNode address = new ModelNode();
             address.add(SUBSYSTEM, NamingExtension.SUBSYSTEM_NAME);
-            address.add(BINDING, "java:global/b");
+            address.add(BINDING, "java:comp/ObjectFactoryWithEnvironmentBindingTestCase");
             return address;
         }
 
@@ -166,7 +166,7 @@ public class ObjectFactoryWithEnvironmentBindingTestCase {
     @Test
     public void testBindingWithEnvironment() throws Exception {
         InitialContext context = new InitialContext();
-        Assert.assertEquals("v1", context.lookup("java:global/b"));
+        Assert.assertEquals("v1", context.lookup("java:comp/ObjectFactoryWithEnvironmentBindingTestCase"));
     }
 
     private static void deployModule() throws IOException {

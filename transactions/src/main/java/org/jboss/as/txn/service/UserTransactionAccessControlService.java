@@ -22,8 +22,11 @@
 
 package org.jboss.as.txn.service;
 
+import org.jboss.as.controller.ServiceVerificationHandler;
 import org.jboss.msc.service.Service;
+import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
@@ -32,7 +35,7 @@ import org.jboss.msc.service.StopContext;
  * Allows enabling/disabling access to the {@link javax.transaction.UserTransaction} at runtime. Typically, components (like the
  * EJB component), at runtime, based on a certain criteria decide whether or not access to the
  * {@link javax.transaction.UserTransaction} is allowed during an invocation associated with a thread. The
- * {@link UserTransactionService} and the {@link UserTransactionBindingService} which are responsible for handing out the
+ * {@link UserTransactionService} and the {@link UserTransactionWithAccessControlService} which are responsible for handing out the
  * {@link javax.transaction.UserTransaction} use this service to decide whether or not they should hand out the
  * {@link javax.transaction.UserTransaction}
  *
@@ -42,6 +45,13 @@ import org.jboss.msc.service.StopContext;
 public class UserTransactionAccessControlService implements Service<UserTransactionAccessControlService> {
 
     public static final ServiceName SERVICE_NAME = TxnServices.JBOSS_TXN.append("UserTransactionAccessControlService");
+
+    public static ServiceController<UserTransactionAccessControlService> addService(final ServiceTarget target, final ServiceVerificationHandler verificationHandler) {
+        UserTransactionAccessControlService service = new UserTransactionAccessControlService();
+        return target.addService(SERVICE_NAME, service)
+                .addListener(verificationHandler)
+                .install();
+    }
 
     private UserTransactionAccessControl accessControl;
 

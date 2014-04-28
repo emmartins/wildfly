@@ -21,17 +21,6 @@
 */
 package org.jboss.as.jsr77.subsystem;
 
-import static org.jboss.as.jsr77.subsystem.Constants.APP_NAME;
-import static org.jboss.as.jsr77.subsystem.Constants.DISTINCT_NAME;
-import static org.jboss.as.jsr77.subsystem.Constants.EJB_NAME;
-import static org.jboss.as.jsr77.subsystem.Constants.JNDI_NAME;
-import static org.jboss.as.jsr77.subsystem.Constants.MODULE_NAME;
-
-import java.util.List;
-
-import javax.management.MBeanServer;
-import javax.management.j2ee.ManagementHome;
-
 import org.jboss.as.controller.AbstractAddStepHandler;
 import org.jboss.as.controller.ModelController;
 import org.jboss.as.controller.OperationContext;
@@ -44,9 +33,8 @@ import org.jboss.as.ejb3.remote.DefaultEjbClientContextService;
 import org.jboss.as.ejb3.remote.RemoteViewManagedReferenceFactory;
 import org.jboss.as.ejb3.remote.TCCLEJBClientContextSelectorService;
 import org.jboss.as.jmx.MBeanServerService;
-import org.jboss.as.naming.ServiceBasedNamingStore;
+import org.jboss.as.naming.ManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
 import org.jboss.as.server.Services;
 import org.jboss.as.server.jmx.PluggableMBeanServer;
 import org.jboss.dmr.ModelNode;
@@ -56,6 +44,16 @@ import org.jboss.msc.service.ServiceController.Mode;
 import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.value.InjectedValue;
 import org.jboss.msc.value.Values;
+
+import javax.management.MBeanServer;
+import javax.management.j2ee.ManagementHome;
+import java.util.List;
+
+import static org.jboss.as.jsr77.subsystem.Constants.APP_NAME;
+import static org.jboss.as.jsr77.subsystem.Constants.DISTINCT_NAME;
+import static org.jboss.as.jsr77.subsystem.Constants.EJB_NAME;
+import static org.jboss.as.jsr77.subsystem.Constants.JNDI_NAME;
+import static org.jboss.as.jsr77.subsystem.Constants.MODULE_NAME;
 
 /**
  *
@@ -105,18 +103,11 @@ class JSR77ManagementSubsystemAdd extends AbstractAddStepHandler {
                     .install()
                 );
 
-                //TODO null for source ok?
-                final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(JNDI_NAME);
-                final BinderService binderService = new BinderService(bindInfo.getBindName(), null);
-                final InjectedValue<ClassLoader> viewClassLoader = new InjectedValue<ClassLoader>();
-                viewClassLoader.setValue(Values.immediateValue(ManagementHome.class.getClassLoader()));
-                newControllers.add(target.addService(bindInfo.getBinderServiceName(), binderService)
-                    .addInjection(binderService.getManagedObjectInjector(), new RemoteViewManagedReferenceFactory(APP_NAME, MODULE_NAME, DISTINCT_NAME, EJB_NAME, ManagementHome.class.getName(), false, viewClassLoader))
-                    .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector())
-                    .addListener(verificationHandler)
-                    .setInitialMode(Mode.ACTIVE)
-                    .install()
-                );
+                final ClassLoader classLoader = ManagementHome.class.getClassLoader();
+                final InjectedValue<ClassLoader> viewClassLoader = new InjectedValue<>();
+                viewClassLoader.setValue(Values.immediateValue(classLoader));
+                ManagedReferenceFactory managedReferenceFactory = new RemoteViewManagedReferenceFactory(APP_NAME, MODULE_NAME, DISTINCT_NAME, EJB_NAME, ManagementHome.class.getName(), false, viewClassLoader);
+                newControllers.add(ContextNames.bindInfoFor(JNDI_NAME).builder(target, verificationHandler).installService(managedReferenceFactory, classLoader));
 
                 // Rollback is handled by the parent step
                 context.completeStep(OperationContext.RollbackHandler.NOOP_ROLLBACK_HANDLER);

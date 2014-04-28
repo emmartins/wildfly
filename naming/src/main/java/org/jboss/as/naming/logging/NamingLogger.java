@@ -460,10 +460,10 @@ public interface NamingLogger extends BasicLogger {
     NamingException threadInterrupt(ServiceName serviceName);
 
     @Message(id = 47, value = "Invalid name for context binding %s")
-    DeploymentUnitProcessingException invalidNameForContextBinding(String name);
+    DeploymentUnitProcessingException invalidNameForContextBinding(JndiName name);
 
-    @Message(id = 48, value = "Invalid binding name %s, name must start with one of %s")
-    OperationFailedException invalidNamespaceForBinding(String name, String namespaces);
+    @Message(id = 48, value = "Invalid binding name %s, name must be in java namespace")
+    OperationFailedException invalidNamespaceForBinding(String name);
 
     /**
      * Creates an exception indicating that the type for the binding to add is not known.
@@ -549,15 +549,8 @@ public interface NamingLogger extends BasicLogger {
     @Message(id = 58, value = "Binding add operation for external context not supported in Naming Subsystem model version %s")
     String failedToTransformExternalContext(String modelVersion);
 
-    /**
-     * Creates an exception indicating a lookup failed, wrt {@link Resource} injection.
-     *
-     * @param jndiName the JNDI name.
-     *
-     * @return a {@link RuntimeException} for the error.
-     */
-    @Message(id = 59, value = "Resource lookup for injection failed: %s")
-    RuntimeException resourceLookupForInjectionFailed(String jndiName, @Cause Throwable cause);
+    //@Message(id = 59, value = "Resource lookup for injection failed: %s")
+    //RuntimeException resourceLookupForInjectionFailed(String jndiName, @Cause Throwable cause);
 
     /**
      * Creates an exception indicating that a required attribute is not defined.

@@ -22,18 +22,19 @@
 
 package org.jboss.as.ee.component;
 
+import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
+import org.jboss.as.ee.concurrent.ConcurrentContext;
+import org.jboss.as.ee.logging.EeLogger;
+import org.jboss.as.ee.naming.InjectedEENamespaceContextSelector;
+import org.jboss.as.ee.naming.ModuleBindingConfigurations;
+import org.jboss.msc.service.ServiceName;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
-import org.jboss.as.ee.logging.EeLogger;
-import org.jboss.as.ee.component.interceptors.InterceptorClassDescription;
-import org.jboss.as.ee.concurrent.ConcurrentContext;
-import org.jboss.as.ee.naming.InjectedEENamespaceContextSelector;
-import org.jboss.msc.service.ServiceName;
 
 /**
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
@@ -48,7 +49,6 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     private final Map<String, List<ComponentDescription>> componentsByClassName = new HashMap<String, List<ComponentDescription>>();
     private final Map<String, EEModuleClassDescription> classDescriptions = new HashMap<String, EEModuleClassDescription>();
     private final Map<String, InterceptorClassDescription> interceptorClassOverrides = new HashMap<String, InterceptorClassDescription>();
-
     /**
      * Additional interceptor environment that was defined in the deployment descriptor <interceptors/> element.
      */
@@ -62,7 +62,8 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     private InjectedEENamespaceContextSelector namespaceContextSelector;
 
     // Module Bindings
-    private final List<BindingConfiguration> bindingConfigurations = new ArrayList<BindingConfiguration>();
+    private final ModuleBindingConfigurations bindingConfigurations;
+
     //injections that have been set in the components deployment descriptor
     private final Map<String, Map<InjectionTarget, ResourceInjectionConfiguration>> resourceInjections = new HashMap<String, Map<InjectionTarget, ResourceInjectionConfiguration>>();
 
@@ -81,19 +82,20 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
 
     /**
      * Construct a new instance.
-     *
-     * @param applicationName    the application name (which is same as the module name if the .ear is absent)
+     *  @param applicationName    the application name (which is same as the module name if the .ear is absent)
      * @param moduleName         the module name
      * @param earApplicationName The application name (which is null if the .ear is absent)
-     * @param appClient          indicates if the process type is an app client
+     * @param appClient             indicates if the process type is an app client
+     * @param bindingsConfiguration the bindings configuration
      */
-    public EEModuleDescription(final String applicationName, final String moduleName, final String earApplicationName, final boolean appClient) {
+    public EEModuleDescription(final String applicationName, final String moduleName, final String earApplicationName, final boolean appClient, final ModuleBindingConfigurations bindingsConfiguration) {
         this.applicationName = applicationName;
         this.moduleName = moduleName;
         this.earApplicationName = earApplicationName;
         this.appClient = appClient;
         this.concurrentContext = new ConcurrentContext();
         this.defaultResourceJndiNames = new EEDefaultResourceJndiNames();
+        this.bindingConfigurations = bindingsConfiguration;
     }
 
     /**
@@ -274,7 +276,11 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
         interceptorClassOverrides.put(className, InterceptorClassDescription.merge(interceptorClassOverrides.get(className), override));
     }
 
-    public List<BindingConfiguration> getBindingConfigurations() {
+    /**
+     *
+     * @return the module's binding configurations
+     */
+    public ModuleBindingConfigurations getBindingConfigurations() {
         return bindingConfigurations;
     }
 
@@ -327,4 +333,5 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     public void setDefaultSecurityDomain(String defaultSecurityDomain) {
         this.defaultSecurityDomain = defaultSecurityDomain;
     }
+
 }

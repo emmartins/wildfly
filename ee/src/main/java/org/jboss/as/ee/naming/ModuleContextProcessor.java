@@ -22,90 +22,80 @@
 
 package org.jboss.as.ee.naming;
 
-import java.util.HashSet;
-import java.util.Set;
-
+import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.component.FixedInjectionSource;
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.naming.NamingStore;
 import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.ValueManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.deployment.JndiName;
+import org.jboss.as.naming.service.ScopedJavaModuleServiceBasedNamingStoreService;
+import org.jboss.as.server.deployment.AttachmentList;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.Values;
 
-import static org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION;
-import static org.jboss.as.ee.naming.Attachments.MODULE_CONTEXT_CONFIG;
 import static org.jboss.as.server.deployment.Attachments.SETUP_ACTIONS;
 
 /**
- * Deployment processor that deploys a naming context for the current module.
+ * Processor that deploys the scoped java:module context.
  *
  * @author John E. Bailey
  * @author Eduardo Martins
  */
 public class ModuleContextProcessor implements DeploymentUnitProcessor {
 
-    /**
-     * Add a ContextService for this module.
-     *
-     * @param phaseContext the deployment unit context
-     * @throws org.jboss.as.server.deployment.DeploymentUnitProcessingException
-     */
+    private static final JndiName JNDI_NAME_java_module_ModuleName = new JndiName("java:module/ModuleName");
+
+    @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         if (DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
             return;
         }
-        EEModuleDescription moduleDescription = deploymentUnit.getAttachment(EE_MODULE_DESCRIPTION);
-        final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
+        final EEModuleDescription moduleDescription = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION);
+        if (moduleDescription == null) {
+            return;
+        }
 
-        final ServiceName appContextServiceName = ContextNames.contextServiceNameOfApplication(moduleDescription.getApplicationName());
+        // setup the scoped java:module naming store
         final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(), moduleDescription.getModuleName());
-        final NamingStoreService contextService = new NamingStoreService(true);
-        serviceTarget.addService(moduleContextServiceName, contextService).install();
-
-        final BinderService moduleNameBinder = new BinderService("ModuleName");
-        final ServiceName moduleNameServiceName = moduleContextServiceName.append("ModuleName");
-        serviceTarget.addService(moduleNameServiceName, moduleNameBinder)
-                .addInjection(moduleNameBinder.getManagedObjectInjector(), new ValueManagedReferenceFactory(Values.immediateValue(moduleDescription.getModuleName())))
-                .addDependency(moduleContextServiceName, ServiceBasedNamingStore.class, moduleNameBinder.getNamingStoreInjector())
+        final ScopedJavaModuleServiceBasedNamingStoreService contextService = new ScopedJavaModuleServiceBasedNamingStoreService();
+        phaseContext.getServiceTarget().addService(moduleContextServiceName, contextService)
+                .addDependency(ContextNames.SHARED_MODULE_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, contextService.getSharedJavaModuleServiceBasedNamingStore())
+                .addDependency(ContextNames.SHARED_COMP_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, contextService.getSharedJavaCompServiceBasedNamingStore())
                 .install();
-        deploymentUnit.addToAttachmentList(org.jboss.as.server.deployment.Attachments.JNDI_DEPENDENCIES,moduleNameServiceName);
 
-        deploymentUnit.putAttachment(MODULE_CONTEXT_CONFIG, moduleContextServiceName);
-
+        // setup the namespace context selector
+        final ServiceName applicationContextServiceName = ContextNames.contextServiceNameOfApplication(moduleDescription.getApplicationName());
         final InjectedEENamespaceContextSelector selector = new InjectedEENamespaceContextSelector();
-        phaseContext.addDependency(appContextServiceName, NamingStore.class, selector.getAppContextInjector());
+        phaseContext.addDependency(applicationContextServiceName, NamingStore.class, selector.getAppContextInjector());
         phaseContext.addDependency(moduleContextServiceName, NamingStore.class, selector.getModuleContextInjector());
         phaseContext.addDependency(moduleContextServiceName, NamingStore.class, selector.getCompContextInjector());
         phaseContext.addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, NamingStore.class, selector.getJbossContextInjector());
         phaseContext.addDependency(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME, NamingStore.class, selector.getExportedContextInjector());
         phaseContext.addDependency(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME, NamingStore.class, selector.getGlobalContextInjector());
-
         moduleDescription.setNamespaceContextSelector(selector);
 
-        final Set<ServiceName> serviceNames = new HashSet<ServiceName>();
-        serviceNames.add(appContextServiceName);
-        serviceNames.add(moduleContextServiceName);
-        serviceNames.add(ContextNames.JBOSS_CONTEXT_SERVICE_NAME);
-        serviceNames.add(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME);
+        // setup the jndi dependencies DU attachment list
+        deploymentUnit.putAttachment(org.jboss.as.server.deployment.Attachments.JNDI_DEPENDENCIES, new AttachmentList<>(ServiceName.class));
 
         // add the arquillian setup action, so the module namespace is available in arquillian tests
         final JavaNamespaceSetup setupAction = new JavaNamespaceSetup(selector, deploymentUnit.getServiceName());
         deploymentUnit.addToAttachmentList(SETUP_ACTIONS, setupAction);
         deploymentUnit.addToAttachmentList(org.jboss.as.ee.component.Attachments.WEB_SETUP_ACTIONS, setupAction);
         deploymentUnit.putAttachment(Attachments.JAVA_NAMESPACE_SETUP_ACTION, setupAction);
+
+        final ModuleBindingConfigurations moduleBindingConfigurations = moduleDescription.getBindingConfigurations();
+        // add the java:module/ModuleName binding
+        moduleBindingConfigurations.addDeploymentBinding(new BindingConfiguration(JNDI_NAME_java_module_ModuleName, new FixedInjectionSource(moduleDescription.getModuleName())));
     }
 
+    @Override
     public void undeploy(DeploymentUnit context) {
 
     }

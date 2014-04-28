@@ -22,29 +22,12 @@
 
 package org.jboss.as.messaging.deployment;
 
-import static org.jboss.as.ee.structure.DeploymentType.APPLICATION_CLIENT;
-import static org.jboss.as.ee.structure.DeploymentType.WAR;
-import static org.jboss.as.messaging.CommonAttributes.NAME;
-import static org.jboss.as.messaging.jms.ConnectionFactoryAttributes.Pooled.MAX_POOL_SIZE;
-import static org.jboss.as.messaging.jms.ConnectionFactoryAttributes.Pooled.MIN_POOL_SIZE;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSConnectionFactoryDefinition;
-import javax.jms.JMSConnectionFactoryDefinitions;
-import javax.jms.JMSDestinationDefinition;
-import javax.jms.JMSDestinationDefinitions;
-
-import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.EEApplicationClasses;
 import org.jboss.as.ee.component.EEModuleClassDescription;
 import org.jboss.as.ee.component.EEModuleDescription;
-import org.jboss.as.ee.structure.DeploymentTypeMarker;
+import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.structure.EJBAnnotationPropertyReplacement;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
@@ -57,6 +40,19 @@ import org.jboss.jandex.AnnotationValue;
 import org.jboss.jandex.ClassInfo;
 import org.jboss.jandex.DotName;
 import org.jboss.metadata.property.PropertyReplacer;
+
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSConnectionFactoryDefinition;
+import javax.jms.JMSConnectionFactoryDefinitions;
+import javax.jms.JMSDestinationDefinition;
+import javax.jms.JMSDestinationDefinitions;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import static org.jboss.as.messaging.CommonAttributes.NAME;
+import static org.jboss.as.messaging.jms.ConnectionFactoryAttributes.Pooled.MAX_POOL_SIZE;
+import static org.jboss.as.messaging.jms.ConnectionFactoryAttributes.Pooled.MIN_POOL_SIZE;
 
 /**
  * Process {@link JMSDestinationDefinition}(s) {@link JMSConnectionFactoryDefinition}(s) annotations.
@@ -146,11 +142,6 @@ public class MessagingJMSDefinitionAnnotationParser implements DeploymentUnitPro
         }
 
         final BindingConfiguration config = new BindingConfiguration(nameValue.asString(), source);
-
-        if (DeploymentTypeMarker.isType(WAR, deploymentUnit) || DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
-            eeModuleDescription.getBindingConfigurations().add(config);
-        }
-
         EEModuleClassDescription classDescription = eeModuleDescription.addOrGetLocalClassDescription(target.name().toString());
         classDescription.getBindingConfigurations().add(config);
     }
@@ -178,12 +169,6 @@ public class MessagingJMSDefinitionAnnotationParser implements DeploymentUnitPro
         source.setMinPoolSize(asInt(connectionFactoryDefinition, "minPoolSize", MIN_POOL_SIZE.getDefaultValue().asInt()));
 
         final BindingConfiguration config = new BindingConfiguration(nameValue.asString(), source);
-
-        if (DeploymentTypeMarker.isType(WAR, deploymentUnit)
-                || DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
-            eeModuleDescription.getBindingConfigurations().add(config);
-        }
-
         EEModuleClassDescription classDescription = eeModuleDescription.addOrGetLocalClassDescription(target.name().toString());
         classDescription.getBindingConfigurations().add(config);
     }
