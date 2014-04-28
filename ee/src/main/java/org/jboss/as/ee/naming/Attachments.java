@@ -23,16 +23,19 @@
 package org.jboss.as.ee.naming;
 
 import org.jboss.as.server.deployment.AttachmentKey;
-import org.jboss.msc.service.ServiceName;
 
 /**
  * EE related attachments.
  *
  * @author John Bailey
+ * @author Eduardo Martins
  */
 public class Attachments {
-    public static final AttachmentKey<ServiceName> APPLICATION_CONTEXT_CONFIG = AttachmentKey.create(ServiceName.class);
-    public static final AttachmentKey<ServiceName> MODULE_CONTEXT_CONFIG = AttachmentKey.create(ServiceName.class);
+
+    public static final AttachmentKey<SharedContextBindings> EE_JNDI_SHARED_CONTEXTS_BINDINGS = AttachmentKey.create(SharedContextBindings.class);
+
+    public static final AttachmentKey<ApplicationBinder> EE_JNDI_APP_CONTEXT_BINDER = AttachmentKey.create(ApplicationBinder.class);
+    public static final AttachmentKey<ModuleBinder> EE_JNDI_MODULE_CONTEXT_BINDER = AttachmentKey.create(ModuleBinder.class);
 
     public static final AttachmentKey<JavaNamespaceSetup> JAVA_NAMESPACE_SETUP_ACTION = AttachmentKey.create(JavaNamespaceSetup.class);
 

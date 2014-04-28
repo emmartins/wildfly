@@ -22,20 +22,17 @@
 
 package org.jboss.as.naming.deployment;
 
-import org.jboss.as.naming.ImmediateManagedReference;
-import org.jboss.as.naming.ManagedReference;
+import org.jboss.as.controller.ServiceVerificationHandler;
+import org.jboss.as.naming.InitialContext;
 import org.jboss.as.naming.ManagedReferenceFactory;
-import org.jboss.as.naming.NamingContext;
-import org.jboss.as.naming.NamingStore;
-import org.jboss.as.naming.context.external.ExternalContexts;
-import org.jboss.as.server.deployment.DeploymentUnit;
-import org.jboss.as.naming.logging.NamingLogger;
-import org.jboss.msc.inject.InjectionException;
-import org.jboss.msc.inject.Injector;
-import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.as.naming.service.BinderServiceBuilder;
+import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceTarget;
 
-import javax.naming.NamingException;
+import javax.naming.CompositeName;
+import javax.naming.InvalidNameException;
+import javax.naming.Name;
 
 /**
  * @author John Bailey
@@ -74,7 +71,7 @@ public class ContextNames {
     public static final ServiceName APPLICATION_CONTEXT_SERVICE_NAME = JAVA_CONTEXT_SERVICE_NAME.append("app");
 
     /**
-     * Parent ServiceName for java:module namespacef
+     * Parent ServiceName for java:module namespace
      */
     public static final ServiceName MODULE_CONTEXT_SERVICE_NAME = JAVA_CONTEXT_SERVICE_NAME.append("module");
 
@@ -82,6 +79,71 @@ public class ContextNames {
      * ServiceName for java:jboss/exported namespace
      */
     public static final ServiceName EXPORTED_CONTEXT_SERVICE_NAME = JBOSS_CONTEXT_SERVICE_NAME.append("exported");
+
+    /**
+     * Parent ServiceName for shared namespaces
+     */
+    public static final ServiceName SHARED_CONTEXT_SERVICE_NAME = JAVA_CONTEXT_SERVICE_NAME.append("shared");
+
+    /**
+     * ServiceName for shared java:comp namespace
+     */
+    public static final ServiceName SHARED_COMP_CONTEXT_SERVICE_NAME = SHARED_CONTEXT_SERVICE_NAME.append("comp");
+
+    /**
+     * ServiceName for shared java:module namespace
+     */
+    public static final ServiceName SHARED_MODULE_CONTEXT_SERVICE_NAME = SHARED_CONTEXT_SERVICE_NAME.append("module");
+
+    /**
+     * ServiceName for shared java:app namespace
+     */
+    public static final ServiceName SHARED_APP_CONTEXT_SERVICE_NAME = SHARED_CONTEXT_SERVICE_NAME.append("app");
+
+    // javax.naming Names
+
+    /**
+     * javax.naming Name for java:
+     */
+    public static final Name JAVA_NAME = createName("java:");
+
+    /**
+     * javax.naming Name for java:comp
+     */
+    public static final Name JAVA_COMP_NAME = createName("java:comp");
+
+    /**
+     * javax.naming Name for java:module
+     */
+    public static final Name JAVA_MODULE_NAME = createName("java:module");
+
+    /**
+     * javax.naming Name for java:app
+     */
+    public static final Name JAVA_APP_NAME = createName("java:app");
+
+    /**
+     * javax.naming Name for java:global
+     */
+    public static final Name JAVA_GLOBAL_NAME = createName("java:global");
+
+    /**
+     * javax.naming Name for java:jboss
+     */
+    public static final Name JAVA_JBOSS_NAME = createName("java:jboss");
+
+    /**
+     * javax.naming Name for java:jboss/exported
+     */
+    public static final Name JAVA_JBOSS_EXPORTED_NAME = createName("java:jboss/exported");
+
+    private static Name createName(String s) {
+        try {
+            return new CompositeName(s);
+        } catch (InvalidNameException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * Get the base service name of a component's JNDI namespace.
@@ -117,44 +179,94 @@ public class ContextNames {
     }
 
     /**
-     * Get the service name of a context, or {@code null} if there is no service mapping for the context name.
+     * Get the service name of a jndiName, or {@code null} if there is no service mapping for the jndiName name.
      *
      * @param app     the application name
      * @param module  the module name
      * @param comp    the component name
-     * @param context the context to check
+     * @param jndiName the jndiName to check
      * @return the BindInfo
      */
-    public static BindInfo bindInfoFor(String app, String module, String comp, String context) {
-        if (context.startsWith("java:")) {
-            final String namespace;
-            final int i = context.indexOf('/');
-            if (i == -1) {
-                namespace = context.substring(5);
-            } else if (i == 5) {
-                // Absolute path
-                return new BindInfo(JAVA_CONTEXT_SERVICE_NAME, context.substring(6));
-            } else {
-                namespace = context.substring(5, i);
-            }
+    public static BindInfo bindInfoFor(String app, String module, String comp, String jndiName) {
+        return bindInfoFor(app, module, comp, new JndiName(jndiName));
+    }
 
-            if (namespace.equals("global")) {
-                return new BindInfo(GLOBAL_CONTEXT_SERVICE_NAME, context.substring(12));
-            } else if (namespace.equals("jboss")) {
-                String rest = context.substring(i);
-                if(rest.startsWith("/exported/")) {
-                    return new BindInfo(EXPORTED_CONTEXT_SERVICE_NAME, context.substring(20));
-                } else {
-                    return new BindInfo(JBOSS_CONTEXT_SERVICE_NAME, context.substring(11));
-                }
-            } else if (namespace.equals("app")) {
-                return new BindInfo(contextServiceNameOfApplication(app), context.substring(9));
-            } else if (namespace.equals("module")) {
-                return new BindInfo(contextServiceNameOfModule(app, module), context.substring(12));
-            } else if (namespace.equals("comp")) {
-                return new BindInfo(contextServiceNameOfComponent(app, module, comp), context.substring(10));
+
+    public static BindInfo bindInfoFor(String app, String module, String comp, JndiName jndiName) {
+        if (!jndiName.isJava()) {
+            return null;
+        }
+        final String absoluteJndiName = jndiName.getAbsoluteName();
+        String bindName = absoluteJndiName;
+        final ServiceName parentContextName;
+        if (jndiName.isJavaComp()) {
+            bindName = bindName.substring("java:comp/".length());
+            if (comp != null) {
+                parentContextName = contextServiceNameOfComponent(app, module, comp);
             } else {
-                return new BindInfo(JBOSS_CONTEXT_SERVICE_NAME, context);
+                parentContextName = SHARED_COMP_CONTEXT_SERVICE_NAME;
+            }
+        } else if (jndiName.isJavaModule()) {
+            bindName = bindName.substring("java:module/".length());
+            if (module != null) {
+                parentContextName = contextServiceNameOfModule(app, module);
+            } else {
+                parentContextName = SHARED_MODULE_CONTEXT_SERVICE_NAME;
+            }
+        } else if (jndiName.isJavaApp()) {
+            bindName = bindName.substring("java:app/".length());
+            if (app != null) {
+                parentContextName = contextServiceNameOfApplication(app);
+            } else {
+                parentContextName = SHARED_APP_CONTEXT_SERVICE_NAME;
+            }
+        } else if (jndiName.isJavaGlobal()) {
+            bindName = bindName.substring("java:global/".length());
+            parentContextName = GLOBAL_CONTEXT_SERVICE_NAME;
+        } else if (jndiName.isJavaJBossExported()) {
+            bindName = bindName.substring("java:jboss/exported/".length());
+            parentContextName = EXPORTED_CONTEXT_SERVICE_NAME;
+        } else if (jndiName.isJavaJBoss()) {
+            bindName = bindName.substring("java:jboss/".length());
+            parentContextName = JBOSS_CONTEXT_SERVICE_NAME;
+        } else {
+            bindName = bindName.substring("java:".length());
+            if (bindName.charAt(0) == '/') {
+                bindName = bindName.substring(1);
+            }
+            parentContextName = JAVA_CONTEXT_SERVICE_NAME;
+        }
+        return new BindInfo(parentContextName, bindName, absoluteJndiName);
+    }
+
+
+
+    public static BindInfo bindInfoFor(String app, String module, String comp, boolean useCompNamespace, final String jndiName) {
+        return bindInfoFor(app, module, comp, useCompNamespace, new JndiName(jndiName));
+    }
+
+    public static BindInfo bindInfoFor(String app, String module, final String jndiName) {
+        return bindInfoFor(app, module, null, false, new JndiName(jndiName));
+    }
+
+    public static BindInfo bindInfoFor(String app, String module, final JndiName jndiName) {
+        return bindInfoFor(app, module, null, false, jndiName);
+    }
+
+    public static BindInfo bindInfoFor(String app, final String jndiName) {
+        return bindInfoFor(app, null, null, false, new JndiName(jndiName));
+    }
+
+    public static BindInfo bindInfoFor(String app, final JndiName jndiName) {
+        return bindInfoFor(app, null, null, false, jndiName);
+    }
+
+    public static BindInfo bindInfoFor(String app, String module, String comp, boolean useCompNamespace, final JndiName jndiName) {
+        if (jndiName.isJava()) {
+            if (jndiName.isJavaComp() && !useCompNamespace) {
+                return bindInfoFor(app, module, module, new JndiName("java:module" + jndiName.getAbsoluteName().substring("java:comp".length())));
+            } else {
+                return bindInfoFor(app, module, comp, jndiName);
             }
         } else {
             return null;
@@ -162,33 +274,22 @@ public class ContextNames {
     }
 
     /**
-     * Get the service name of an environment entry
+     * Get the service name of a NamingStore
      *
-     * @param app              the application name
-     * @param module           the module name
-     * @param comp             the component name
-     * @param useCompNamespace If the component has its own comp namespace
-     * @param envEntryName     The env entry name
-     * @return the service name or {@code null} if there is no service
+     * @param jndiName the jndi name
+     * @return the bind info for the jndi name
      */
-    public static BindInfo bindInfoForEnvEntry(String app, String module, String comp, boolean useCompNamespace, final String envEntryName) {
-        if (envEntryName.startsWith("java:")) {
-            if (useCompNamespace) {
-                return bindInfoFor(app, module, comp, envEntryName);
-            } else {
-                if (envEntryName.startsWith("java:comp")) {
-                    return bindInfoFor(app, module, module, "java:module" + envEntryName.substring("java:comp".length()));
-                } else {
-                    return bindInfoFor(app, module, module, envEntryName);
-                }
-            }
-        } else {
-            if (useCompNamespace) {
-                return bindInfoFor(app, module, comp, "java:comp/env/" + envEntryName);
-            } else {
-                return bindInfoFor(app, module, module, "java:module/env/" + envEntryName);
-            }
+    public static BindInfo bindInfoFor(String jndiName) {
+        // FIXME this hack should be removed, all relative names should be relative to same context, and java ee xml and annotations use java:comp/env
+        final String scheme = InitialContext.getURLScheme(jndiName);
+        if (scheme == null) {
+            jndiName = "java:"+jndiName;
         }
+        return bindInfoFor(new JndiName(jndiName));
+    }
+
+    public static BindInfo bindInfoFor(JndiName jndiName) {
+        return bindInfoFor(null, null, null, jndiName);
     }
 
     public static ServiceName buildServiceName(final ServiceName parentName, final String relativeName) {
@@ -202,12 +303,11 @@ public class ContextNames {
         // absolute jndi name inclusive of the namespace
         private final String absoluteJndiName;
 
-        private BindInfo(final ServiceName parentContextServiceName, final String bindName) {
+        private BindInfo(final ServiceName parentContextServiceName, final String bindName, final String absoluteJndiName) {
             this.parentContextServiceName = parentContextServiceName;
             this.binderServiceName = buildServiceName(parentContextServiceName, bindName);
             this.bindName = bindName;
-
-            this.absoluteJndiName = this.generateAbsoluteJndiName();
+            this.absoluteJndiName = absoluteJndiName;
         }
 
         /**
@@ -226,6 +326,23 @@ public class ContextNames {
          */
         public ServiceName getBinderServiceName() {
             return binderServiceName;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            BindInfo bindInfo = (BindInfo) o;
+
+            if (!binderServiceName.equals(bindInfo.binderServiceName)) return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            return binderServiceName.hashCode();
         }
 
         /**
@@ -251,112 +368,92 @@ public class ContextNames {
                     "parentContextServiceName=" + parentContextServiceName +
                     ", binderServiceName=" + binderServiceName +
                     ", bindName='" + bindName + '\'' +
+                    ", absoluteJndiName='" + absoluteJndiName + '\'' +
                     '}';
         }
 
-        private String generateAbsoluteJndiName() {
-            final StringBuffer sb = new StringBuffer();
-            if (this.parentContextServiceName.equals(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:jboss/exported/");
-            } else if (this.parentContextServiceName.equals(ContextNames.JBOSS_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:jboss/");
-            } else if (this.parentContextServiceName.equals(ContextNames.APPLICATION_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:app/");
-            } else if (this.parentContextServiceName.equals(ContextNames.MODULE_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:module/");
-            } else if (this.parentContextServiceName.equals(ContextNames.COMPONENT_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:comp/");
-            } else if (this.parentContextServiceName.equals(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:global/");
-            } else if (this.parentContextServiceName.equals(ContextNames.JAVA_CONTEXT_SERVICE_NAME)) {
-                sb.append("java:/");
-            }
-            sb.append(this.bindName);
-            return sb.toString();
+        // binding api
+
+        /**
+         * Creates a new binder service builder with the specified service target.
+         * @param serviceTarget
+         * @return
+         */
+        public BinderServiceBuilder builder(ServiceTarget serviceTarget) {
+            return new BinderServiceBuilder(this, serviceTarget);
         }
 
         /**
-         * Setup a lookup with respect to {@link javax.annotation.Resource} injection.
-         *
-         * @param serviceBuilder the builder that should depend on the lookup
-         * @param targetInjector the injector which will receive the lookup result once the builded service starts
+         * Creates a new binder service builder with the specified service target and verification handler.
+         * @param serviceTarget
+         * @param verificationHandler
+         * @return
          */
-        public void setupLookupInjection(final ServiceBuilder<?> serviceBuilder,
-                final Injector<ManagedReferenceFactory> targetInjector, final DeploymentUnit deploymentUnit, final boolean optional) {
-
-            // set dependency to the binder or its parent external context's service name
-            final ExternalContexts externalContexts = deploymentUnit.getAttachment(Attachments.EXTERNAL_CONTEXTS);
-            final ServiceName parentExternalContextServiceName = externalContexts != null ? externalContexts.getParentExternalContext(getBinderServiceName()) : null;
-            final ServiceName dependencyServiceName = parentExternalContextServiceName == null ? getBinderServiceName() : parentExternalContextServiceName;
-            final ServiceBuilder.DependencyType dependencyType = optional ? ServiceBuilder.DependencyType.OPTIONAL : ServiceBuilder.DependencyType.REQUIRED;
-            serviceBuilder.addDependency(dependencyType, dependencyServiceName);
-
-            // an injector which upon being injected with the naming store, injects a factory - which does the lookup - to the
-            // target injector
-            final Injector<NamingStore> lookupInjector = new Injector<NamingStore>() {
-                @Override
-                public void uninject() {
-                    targetInjector.uninject();
-                }
-                @Override
-                public void inject(final NamingStore value) throws InjectionException {
-                    final NamingContext storeBaseContext = new NamingContext(value, null);
-                    final ManagedReferenceFactory factory = new ManagedReferenceFactory() {
-                        @Override
-                        public ManagedReference getReference() {
-                            try {
-                                return new ImmediateManagedReference(storeBaseContext.lookup(getBindName()));
-                            } catch (NamingException e) {
-                                if(!optional) {
-                                    throw NamingLogger.ROOT_LOGGER.resourceLookupForInjectionFailed(getAbsoluteJndiName(), e);
-                                } else {
-                                    NamingLogger.ROOT_LOGGER.tracef(e,"failed to lookup %s", getAbsoluteJndiName());
-                                }
-                            }
-                            return null;
-                        }
-                    };
-                    targetInjector.inject(factory);
-                }
-            };
-            // sets dependency to the parent context service (holds the naming store), which will trigger the lookup injector
-            serviceBuilder.addDependency(getParentContextServiceName(), NamingStore.class, lookupInjector);
+        public BinderServiceBuilder builder(ServiceTarget serviceTarget, ServiceVerificationHandler verificationHandler) {
+            return new BinderServiceBuilder(this, serviceTarget, verificationHandler);
         }
 
-    }
+        /**
+         * Creates a new binder service builder with the specified service target and initial mode.
+         * @param serviceTarget
+         * @param initialMode
+         * @return
+         */
+        public BinderServiceBuilder builder(ServiceTarget serviceTarget, ServiceController.Mode initialMode) {
+            return new BinderServiceBuilder(this, serviceTarget, initialMode);
+        }
 
-    /**
-     * Get the service name of a NamingStore
-     *
-     * @param jndiName the jndi name
-     * @return the bind info for the jndi name
-     */
-    public static BindInfo bindInfoFor(final String jndiName) {
-        // TODO: handle non java: schemes
-        String bindName;
-        if (jndiName.startsWith("java:")) {
-            bindName = jndiName.substring(5);
-        } else if (!jndiName.startsWith("jboss") && !jndiName.startsWith("global") && !jndiName.startsWith("/")) {
-            bindName = "/" + jndiName;
-        } else {
-            bindName = jndiName;
+        /**
+         * Creates a new binder service builder with the specified service target, initial mode and verification handler.
+         * @param serviceTarget
+         * @param initialMode
+         * @param verificationHandler
+         * @return
+         */
+        public BinderServiceBuilder builder(ServiceTarget serviceTarget, ServiceController.Mode initialMode, ServiceVerificationHandler verificationHandler) {
+            return new BinderServiceBuilder(this, serviceTarget, initialMode, verificationHandler);
         }
-        final ServiceName parentContextName;
-        if(bindName.startsWith("jboss/exported/")) {
-            parentContextName = EXPORTED_CONTEXT_SERVICE_NAME;
-            bindName = bindName.substring(15);
-        } else if (bindName.startsWith("jboss/")) {
-            parentContextName = JBOSS_CONTEXT_SERVICE_NAME;
-            bindName = bindName.substring(6);
-        } else if (bindName.startsWith("global/")) {
-            parentContextName = GLOBAL_CONTEXT_SERVICE_NAME;
-            bindName = bindName.substring(7);
-        } else if (bindName.startsWith("/")) {
-            parentContextName = JAVA_CONTEXT_SERVICE_NAME;
-            bindName = bindName.substring(1);
-        } else {
-            throw NamingLogger.ROOT_LOGGER.illegalContextInName(jndiName);
+
+        /**
+         * Installs a binder service, into the specified service target, where the value's source is an immediate managed reference factory for the specified value.
+         * @param serviceTarget
+         * @param value
+         * @return
+         */
+        public ServiceController<ManagedReferenceFactory> bind(ServiceTarget serviceTarget, Object value) {
+            return builder(serviceTarget).installService(value);
         }
-        return new BindInfo(parentContextName, bindName);
+
+        /**
+         * Installs a binder service, into the specified service target, where the value's source is the specified managed reference factory.
+         * @param serviceTarget
+         * @param valueFactory
+         * @param valueSource
+         * @return
+         */
+        public ServiceController<ManagedReferenceFactory> bind(ServiceTarget serviceTarget, ManagedReferenceFactory valueFactory, Object valueSource) {
+            return builder(serviceTarget).installService(valueFactory, valueSource);
+        }
+
+        /**
+         * Installs a binder service, into the specified service target, where the value's source is obtained from the service with the specified name.
+         * @param serviceTarget
+         * @param valueServiceName
+         * @return
+         */
+        public ServiceController<ManagedReferenceFactory> bind(ServiceTarget serviceTarget, ServiceName valueServiceName) {
+            return builder(serviceTarget).installService(valueServiceName);
+        }
+
+        /**
+         * Installs a binder service, into the specified service target, where the value's source is the binder service with specified jndi name.
+         * @param serviceTarget
+         * @param valueSource
+         * @return
+         */
+        public ServiceController<ManagedReferenceFactory> bind(ServiceTarget serviceTarget, JndiName valueSource) {
+            return builder(serviceTarget).installService(valueSource);
+        }
+
     }
 }

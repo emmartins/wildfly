@@ -143,7 +143,7 @@ public class MessagingJMSDefinitionAnnotationParser implements DeploymentUnitPro
         final BindingConfiguration config = new BindingConfiguration(nameValue.asString(), source);
 
         if (DeploymentTypeMarker.isType(WAR, deploymentUnit) || DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
-            eeModuleDescription.getBindingConfigurations().add(config);
+            eeModuleDescription.getModuleBindingConfigurations().add(config);
         }
 
         EEModuleClassDescription classDescription = eeModuleDescription.addOrGetLocalClassDescription(target.name().toString());
@@ -174,7 +174,7 @@ public class MessagingJMSDefinitionAnnotationParser implements DeploymentUnitPro
 
         if (DeploymentTypeMarker.isType(WAR, deploymentUnit)
                 || DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
-            eeModuleDescription.getBindingConfigurations().add(config);
+            eeModuleDescription.getModuleBindingConfigurations().add(config);
         }
 
         EEModuleClassDescription classDescription = eeModuleDescription.addOrGetLocalClassDescription(target.name().toString());

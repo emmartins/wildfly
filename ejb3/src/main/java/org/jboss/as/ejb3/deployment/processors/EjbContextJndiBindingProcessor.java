@@ -22,17 +22,9 @@
 
 package org.jboss.as.ejb3.deployment.processors;
 
-import java.util.Collection;
-
-import javax.ejb.EJBContext;
-import javax.ejb.EntityContext;
-import javax.ejb.MessageDrivenContext;
-import javax.ejb.SessionContext;
-
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.BindingConfiguration;
 import org.jboss.as.ee.component.ComponentDescription;
-import org.jboss.as.ee.component.ComponentNamingMode;
 import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.component.deployers.EEResourceReferenceProcessorRegistry;
@@ -49,6 +41,12 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.server.deployment.annotation.CompositeIndex;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
+
+import javax.ejb.EJBContext;
+import javax.ejb.EntityContext;
+import javax.ejb.MessageDrivenContext;
+import javax.ejb.SessionContext;
+import java.util.Collection;
 
 /**
  * Deployment processor responsible for detecting EJB components and adding a {@link BindingConfiguration} for the
@@ -96,21 +94,9 @@ public class EjbContextJndiBindingProcessor implements DeploymentUnitProcessor {
         if (!(componentDescription instanceof EJBComponentDescription)) {
             return;  // Only process EJBs
         }
-        // if the EJB is packaged in a .war, then we need to bind the java:comp/EJBContext only once for the entire module
-        if (componentDescription.getNamingMode() != ComponentNamingMode.CREATE) {
-            // get the module description
-            final EEModuleDescription moduleDescription = componentDescription.getModuleDescription();
-            // the java:module/EJBContext binding configuration
-            // Note that we bind to java:module/EJBContext since it's a .war. End users can still lookup java:comp/EJBContext
-            // and that will internally get translated to  java:module/EJBContext for .war, since java:comp == java:module in
-            // a web ENC. So binding to java:module/EJBContext is OK.
-            final BindingConfiguration ejbContextBinding = new BindingConfiguration("java:module/EJBContext", directEjbContextReferenceSource);
-            moduleDescription.getBindingConfigurations().add(ejbContextBinding);
-        } else { // EJB packaged outside of a .war. So process normally.
-            // add the binding configuration to the component description
-            final BindingConfiguration ejbContextBinding = new BindingConfiguration("java:comp/EJBContext", directEjbContextReferenceSource);
-            componentDescription.getBindingConfigurations().add(ejbContextBinding);
-        }
+        // add the binding configuration to the component description
+        final BindingConfiguration ejbContextBinding = new BindingConfiguration("java:comp/EJBContext", directEjbContextReferenceSource);
+        componentDescription.getBindingConfigurations().add(ejbContextBinding);
     }
 
     private static final ManagedReference ejbContextManagedReference = new ManagedReference() {

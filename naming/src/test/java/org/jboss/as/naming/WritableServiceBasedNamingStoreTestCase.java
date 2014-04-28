@@ -35,7 +35,8 @@ import org.jboss.as.naming.JndiPermission.Action;
 import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.deployment.JndiNamingDependencyProcessor;
 import org.jboss.as.naming.deployment.RuntimeBindReleaseService;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.service.ServiceBasedNamingStoreService;
+import org.jboss.as.naming.service.WritableServiceBasedNamingStoreService;
 import org.jboss.msc.service.AbstractServiceListener;
 import org.jboss.msc.service.ServiceContainer;
 import org.jboss.msc.service.ServiceController;
@@ -65,7 +66,7 @@ public class WritableServiceBasedNamingStoreTestCase {
         installOwnerService(OWNER_FOO);
         installOwnerService(OWNER_BAR);
         final CountDownLatch latch2 = new CountDownLatch(1);
-        final NamingStoreService namingStoreService = new NamingStoreService();
+        final ServiceBasedNamingStoreService namingStoreService = new WritableServiceBasedNamingStoreService(ContextNames.JAVA_NAME);
         container.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, namingStoreService)
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .addListener(new AbstractServiceListener<NamingStore>() {

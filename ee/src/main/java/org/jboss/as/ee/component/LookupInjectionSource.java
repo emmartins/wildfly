@@ -26,10 +26,16 @@ import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.naming.ImmediateManagedReference;
 import org.jboss.as.naming.ManagedReference;
 import org.jboss.as.naming.ManagedReferenceFactory;
+import org.jboss.as.naming.NamingContext;
+import org.jboss.as.naming.NamingStore;
+import org.jboss.as.naming.context.external.ExternalContexts;
 import org.jboss.as.naming.deployment.ContextNames;
+import org.jboss.as.naming.deployment.JndiName;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
+import org.jboss.msc.inject.InjectionException;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.msc.service.ServiceName;
 
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -43,6 +49,7 @@ import java.util.Set;
  * A binding which gets its value from another JNDI binding.
  *
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
+ * @author Eduardo Martins
  */
 public final class LookupInjectionSource extends InjectionSource {
 
@@ -59,7 +66,7 @@ public final class LookupInjectionSource extends InjectionSource {
         URL_SCHEMES = Collections.unmodifiableSet(set);
     }
 
-    private final String lookupName;
+    private final JndiName lookupName;
     private final boolean optional;
 
     public LookupInjectionSource(final String lookupName) {
@@ -67,6 +74,18 @@ public final class LookupInjectionSource extends InjectionSource {
     }
 
     public LookupInjectionSource(final String lookupName, final boolean optional) {
+        if (lookupName == null) {
+            throw EeLogger.ROOT_LOGGER.nullVar("lookupName");
+        }
+        this.lookupName = new JndiName(lookupName);
+        this.optional = optional;
+    }
+
+    public LookupInjectionSource(final JndiName lookupName) {
+        this(lookupName,false);
+    }
+
+    public LookupInjectionSource(final JndiName lookupName, final boolean optional) {
         if (lookupName == null) {
             throw EeLogger.ROOT_LOGGER.nullVar("lookupName");
         }
@@ -82,61 +101,76 @@ public final class LookupInjectionSource extends InjectionSource {
         final String moduleName = resolutionContext.getModuleName();
         final String componentName = resolutionContext.getComponentName();
         final boolean compUsesModule = resolutionContext.isCompUsesModule();
-        final String scheme = org.jboss.as.naming.InitialContext.getURLScheme(lookupName);
-        if (scheme == null) {
-            // relative name, build absolute name and setup normal lookup injection
-            if (componentName != null && !compUsesModule) {
-                ContextNames.bindInfoFor(applicationName, moduleName, componentName, "java:comp/env/" + lookupName)
-                        .setupLookupInjection(serviceBuilder, injector, phaseContext.getDeploymentUnit(), optional);
-            } else if (compUsesModule) {
-                ContextNames.bindInfoFor(applicationName, moduleName, componentName, "java:module/env/" + lookupName)
-                        .setupLookupInjection(serviceBuilder, injector, phaseContext.getDeploymentUnit(), optional);
-            } else {
-                ContextNames.bindInfoFor(applicationName, moduleName, componentName, "java:jboss/env/" + lookupName)
-                        .setupLookupInjection(serviceBuilder, injector, phaseContext.getDeploymentUnit(), optional);
-            }
-        } else {
-            if (scheme.equals("java")) {
-                // an absolute java name, setup normal lookup injection
-                if (compUsesModule && lookupName.startsWith("java:comp/")) {
-                    // switch "comp" with "module"
-                    ContextNames.bindInfoFor(applicationName, moduleName, componentName, "java:module/" + lookupName.substring(10))
-                            .setupLookupInjection(serviceBuilder, injector, phaseContext.getDeploymentUnit(), optional);
-                } else {
-                    ContextNames.bindInfoFor(applicationName, moduleName, componentName, lookupName)
-                            .setupLookupInjection(serviceBuilder, injector, phaseContext.getDeploymentUnit(), optional);
+
+        if (lookupName.isJava()) {
+            final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(applicationName, moduleName, componentName, !compUsesModule, lookupName);
+            // set dependency to the binder or its parent external context's service name
+            final ExternalContexts externalContexts = phaseContext.getDeploymentUnit().getAttachment(org.jboss.as.naming.deployment.Attachments.EXTERNAL_CONTEXTS);
+            final ServiceName parentExternalContextServiceName = externalContexts != null ? externalContexts.getParentExternalContext(bindInfo.getBinderServiceName()) : null;
+            final ServiceName dependencyServiceName = parentExternalContextServiceName == null ? bindInfo.getBinderServiceName() : parentExternalContextServiceName;
+            final ServiceBuilder.DependencyType dependencyType = optional ? ServiceBuilder.DependencyType.OPTIONAL : ServiceBuilder.DependencyType.REQUIRED;
+            serviceBuilder.addDependency(dependencyType, dependencyServiceName);
+
+            // an injector which upon being injected with the naming store, injects a factory - which does the lookup - to the
+            // target injector
+            final Injector<NamingStore> lookupInjector = new Injector<NamingStore>() {
+                @Override
+                public void uninject() {
+                    injector.uninject();
                 }
-            } else {
-                // an absolute non java name
-                final ManagedReferenceFactory managedReferenceFactory;
-                if (URL_SCHEMES.contains(scheme)) {
-                    // a Java EE Standard Resource Manager Connection Factory for URLs, using lookup to define value of URL, inject factory that creates URL instances
-                    managedReferenceFactory = new ManagedReferenceFactory() {
+                @Override
+                public void inject(final NamingStore value) throws InjectionException {
+                    final NamingContext storeBaseContext = new NamingContext(value, null);
+                    final ManagedReferenceFactory factory = new ManagedReferenceFactory() {
                         @Override
                         public ManagedReference getReference() {
                             try {
-                                return new ImmediateManagedReference(new URL(lookupName));
-                            } catch (MalformedURLException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                    };
-                } else {
-                    // lookup for a non java jndi resource, inject factory which does a true jndi lookup
-                    managedReferenceFactory = new ManagedReferenceFactory() {
-                        @Override
-                        public ManagedReference getReference() {
-                            try {
-                                return new ImmediateManagedReference(new InitialContext().lookup(lookupName));
+                                return new ImmediateManagedReference(storeBaseContext.lookup(bindInfo.getBindName()));
                             } catch (NamingException e) {
-                                EeLogger.ROOT_LOGGER.tracef(e, "failed to lookup %s", lookupName);
-                                return null;
+                                if(!optional) {
+                                    throw EeLogger.ROOT_LOGGER.resourceLookupForInjectionFailed(bindInfo.getAbsoluteJndiName(),e);
+                                } else {
+                                    EeLogger.ROOT_LOGGER.tracef(e,"failed to lookup %s", bindInfo.getAbsoluteJndiName());
+                                }
                             }
+                            return null;
                         }
                     };
+                    injector.inject(factory);
                 }
-                injector.inject(managedReferenceFactory);
+            };
+            // sets dependency to the parent context service (holds the naming store), which will trigger the lookup injector
+            serviceBuilder.addDependency(bindInfo.getParentContextServiceName(), NamingStore.class, lookupInjector);
+        } else {
+            final ManagedReferenceFactory managedReferenceFactory;
+            final String absoluteLookupName = lookupName.getAbsoluteName();
+            if (URL_SCHEMES.contains(lookupName.getScheme())) {
+                // a Java EE Standard Resource Manager Connection Factory for URLs, using lookup to define value of URL, inject factory that creates URL instances
+                managedReferenceFactory = new ManagedReferenceFactory() {
+                    @Override
+                    public ManagedReference getReference() {
+                        try {
+                            return new ImmediateManagedReference(new URL(absoluteLookupName));
+                        } catch (MalformedURLException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                };
+            } else {
+                // lookup for a non java jndi resource, inject factory which does a true jndi lookup
+                managedReferenceFactory = new ManagedReferenceFactory() {
+                    @Override
+                    public ManagedReference getReference() {
+                        try {
+                            return new ImmediateManagedReference(new InitialContext().lookup(absoluteLookupName));
+                        } catch (NamingException e) {
+                            EeLogger.ROOT_LOGGER.tracef(e, "failed to lookup %s", absoluteLookupName);
+                            return null;
+                        }
+                    }
+                };
             }
+            injector.inject(managedReferenceFactory);
         }
     }
 

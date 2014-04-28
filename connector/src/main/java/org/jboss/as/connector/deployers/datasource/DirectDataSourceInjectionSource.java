@@ -246,7 +246,7 @@ public class DirectDataSourceInjectionSource extends InjectionSource {
                 .addDependency(ConnectorServices.CCM_SERVICE, CachedConnectionManager.class, dataSourceService.getCcmInjector())
                 .addDependency(ConnectorServices.JDBC_DRIVER_REGISTRY_SERVICE, DriverRegistry.class,
                         dataSourceService.getDriverRegistryInjector()).addDependency(NamingService.SERVICE_NAME);
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
+        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
 
         final DataSourceReferenceFactoryService referenceFactoryService = new DataSourceReferenceFactoryService();
         final ServiceName referenceFactoryServiceName = DataSourceReferenceFactoryService.SERVICE_NAME_BASE

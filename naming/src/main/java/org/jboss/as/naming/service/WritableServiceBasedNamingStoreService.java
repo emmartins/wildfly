@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source.
- * Copyright 2013, Red Hat, Inc., and individual contributors
+ * Copyright 2011, Red Hat, Inc., and individual contributors
  * as indicated by the @author tags. See the copyright.txt file in the
  * distribution for a full listing of individual contributors.
  *
@@ -20,52 +20,37 @@
  * 02110-1301 USA, or see the FSF site: http://www.fsf.org.
  */
 
-package org.jboss.as.ee.concurrent.service;
+package org.jboss.as.naming.service;
 
-import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.msc.service.Service;
+import org.jboss.as.naming.WritableServiceBasedNamingStore;
+import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceRegistry;
+import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
-import org.jboss.msc.service.StopContext;
+
+import javax.naming.Name;
 
 /**
- * Abstract service responsible for managing the lifecyle of EE Concurrent managed resources.
+ * Service responsible for managing the creation and life-cycle of a writable service based naming store.
  *
  * @author Eduardo Martins
  */
-abstract class EEConcurrentAbstractService<T> implements Service<T> {
+public class WritableServiceBasedNamingStoreService extends ServiceBasedNamingStoreService {
 
-    private final String jndiName;
 
-    /**
-     *
-     * @param jndiName
-     */
-    EEConcurrentAbstractService(String jndiName) {
-        this.jndiName = jndiName;
+    public WritableServiceBasedNamingStoreService(Name baseName) {
+        super(baseName);
     }
 
+    @Override
     public void start(final StartContext context) throws StartException {
-        startValue(context);
-        // every ee concurrent resource is bound to jndi, so EE components may reference it.
-        ContextNames.bindInfoFor(jndiName).bind(context.getChildTarget(), getValue());
+        if(store == null) {
+            final ServiceRegistry serviceRegistry = context.getController().getServiceContainer();
+            final ServiceName serviceNameBase = context.getController().getName();
+            final ServiceTarget serviceTarget = context.getChildTarget();
+            store = new WritableServiceBasedNamingStore(serviceRegistry, super.baseName, serviceNameBase, serviceTarget);
+        }
     }
-
-    /**
-     * Starts the service's value.
-     * @param context
-     * @throws StartException
-     */
-    abstract void startValue(final StartContext context) throws StartException;
-
-    public void stop(final StopContext context) {
-        stopValue(context);
-    }
-
-    /**
-     * Stops the service's value.
-     * @param context
-     */
-    abstract void stopValue(final StopContext context);
 
 }

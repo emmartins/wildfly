@@ -78,7 +78,8 @@ public class DirectAdministeredObjectInjectionSource extends InjectionSource {
         String raId = resourceAdapter;
 
         if (resourceAdapter.startsWith("#")) {
-            raId = deploymentUnit.getParent().getName() + raId;
+            final DeploymentUnit raIdDeploymentUnit = deploymentUnit.getParent() != null ? deploymentUnit.getParent() : deploymentUnit;
+            raId = raIdDeploymentUnit.getName() + raId;
         }
         String deployerServiceName = raId;
         if (!raId.endsWith(".rar")) {
@@ -88,7 +89,7 @@ public class DirectAdministeredObjectInjectionSource extends InjectionSource {
 
         SUBSYSTEM_RA_LOGGER.debugf("@AdministeredObjectDefinition: %s for %s binding to %s ", className, resourceAdapter, jndiName);
 
-        ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
+        ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
 
         DirectAdminObjectActivatorService service = new DirectAdminObjectActivatorService(jndiName, className, resourceAdapter,
                 raId, properties, module, bindInfo);

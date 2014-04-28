@@ -36,7 +36,7 @@ import org.jboss.as.naming.management.JndiViewExtensionRegistry;
 import org.jboss.as.naming.service.DefaultNamespaceContextSelectorService;
 import org.jboss.as.naming.service.ExternalContextsService;
 import org.jboss.as.naming.service.NamingService;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.service.WritableServiceBasedNamingStoreService;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
@@ -70,7 +70,7 @@ public class NamingSubsystemAdd extends AbstractBoottimeAddStepHandler {
         final ServiceTarget target = context.getServiceTarget();
 
         // Create the java: namespace
-        newControllers.add(target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new NamingStoreService())
+        newControllers.add(target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_NAME))
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .addListener(verificationHandler)
                 .install());
@@ -83,21 +83,39 @@ public class NamingSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 .addListener(verificationHandler)
                 .install());
 
+        // Create the shared java:comp namespace
+        newControllers.add(target.addService(ContextNames.SHARED_COMP_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_COMP_NAME))
+                .setInitialMode(ServiceController.Mode.ACTIVE)
+                .addListener(verificationHandler)
+                .install());
+
+        // Create the shared java:module namespace
+        newControllers.add(target.addService(ContextNames.SHARED_MODULE_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_MODULE_NAME))
+                .setInitialMode(ServiceController.Mode.ACTIVE)
+                .addListener(verificationHandler)
+                .install());
+
+        // Create the shared java:app namespace
+        newControllers.add(target.addService(ContextNames.SHARED_APP_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_APP_NAME))
+                .setInitialMode(ServiceController.Mode.ACTIVE)
+                .addListener(verificationHandler)
+                .install());
+
         // Create the java:global namespace
-        newControllers.add(target.addService(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME, new NamingStoreService())
+        newControllers.add(target.addService(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_GLOBAL_NAME))
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .addListener(verificationHandler)
                 .install());
 
         // Create the java:jboss vendor namespace
-        newControllers.add(target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new NamingStoreService())
+        newControllers.add(target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_JBOSS_NAME))
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .addListener(verificationHandler)
                 .install());
 
         // Setup remote naming store
         //we always install the naming store, but we don't install the server unless it has been explicitly enabled
-        newControllers.add(target.addService(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME, new NamingStoreService())
+        newControllers.add(target.addService(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_JBOSS_EXPORTED_NAME))
                 .setInitialMode(ServiceController.Mode.ACTIVE)
                 .addListener(verificationHandler)
                 .install());
@@ -105,6 +123,9 @@ public class NamingSubsystemAdd extends AbstractBoottimeAddStepHandler {
         // add the default namespace context selector service
         DefaultNamespaceContextSelectorService defaultNamespaceContextSelectorService = new DefaultNamespaceContextSelectorService();
         newControllers.add(target.addService(DefaultNamespaceContextSelectorService.SERVICE_NAME, defaultNamespaceContextSelectorService)
+                .addDependency(ContextNames.SHARED_COMP_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getSharedCompNamingStore())
+                .addDependency(ContextNames.SHARED_MODULE_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getSharedModuleNamingStore())
+                .addDependency(ContextNames.SHARED_APP_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getSharedAppNamingStore())
                 .addDependency(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getGlobalNamingStore())
                 .addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getJbossNamingStore())
                 .addDependency(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME, NamingStore.class, defaultNamespaceContextSelectorService.getRemoteExposedNamingStore())

@@ -87,7 +87,7 @@ class DirectMailSessionInjectionSource extends InjectionSource {
         final ServiceBuilder<?> mailSessionServiceBuilder = serviceTarget
                 .addService(mailSessionServiceName, mailSessionService);
 
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
+        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
 
         final MailSessionManagedReferenceFactory referenceFactoryService = new MailSessionManagedReferenceFactory(mailSessionService);
 

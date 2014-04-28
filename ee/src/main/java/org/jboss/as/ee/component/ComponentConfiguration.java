@@ -35,6 +35,7 @@ import java.util.Set;
 import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.component.interceptors.OrderedItemContainer;
 import org.jboss.as.ee.concurrent.ConcurrentContext;
+import org.jboss.as.ee.naming.ComponentBinder;
 import org.jboss.as.naming.context.NamespaceContextSelector;
 import org.jboss.as.server.deployment.reflect.ClassIndex;
 import org.jboss.invocation.InterceptorFactory;
@@ -88,6 +89,8 @@ public class ComponentConfiguration {
     private NamespaceContextSelector namespaceContextSelector;
 
     private final Set<Object> interceptorContextKeys = new HashSet<Object>();
+
+    private ComponentBinder binder;
 
     public ComponentConfiguration(final ComponentDescription componentDescription, final ClassIndex classIndex, final ClassLoader moduleClassLoader, final ModuleLoader moduleLoader) {
         this.componentDescription = componentDescription;
@@ -464,5 +467,13 @@ public class ComponentConfiguration {
 
     public ConcurrentContext getConcurrentContext() {
         return concurrentContext;
+    }
+
+    public ComponentBinder getBinder() {
+        return binder;
+    }
+
+    public void setBinder(ComponentBinder binder) {
+        this.binder = binder;
     }
 }

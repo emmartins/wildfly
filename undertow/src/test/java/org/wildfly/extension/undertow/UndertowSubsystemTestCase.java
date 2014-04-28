@@ -22,16 +22,6 @@
 
 package org.wildfly.extension.undertow;
 
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PORT;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
-
-import java.io.IOException;
-import java.util.List;
-
 import io.undertow.predicate.Predicates;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
@@ -40,7 +30,7 @@ import org.jboss.as.controller.PathElement;
 import org.jboss.as.domain.management.SecurityRealm;
 import org.jboss.as.domain.management.security.SecurityRealmService;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.NamingStoreService;
+import org.jboss.as.naming.service.WritableServiceBasedNamingStoreService;
 import org.jboss.as.remoting.HttpListenerRegistryService;
 import org.jboss.as.server.Services;
 import org.jboss.as.server.moduleservice.ServiceModuleLoader;
@@ -62,6 +52,16 @@ import org.wildfly.extension.undertow.filters.FilterRef;
 import org.wildfly.extension.undertow.filters.FilterService;
 import org.xnio.OptionMap;
 import org.xnio.Options;
+
+import java.io.IOException;
+import java.util.List;
+
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.ADD;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.PORT;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SOCKET_BINDING_GROUP;
 
 /**
  * This is the barebone test example that tests subsystem
@@ -184,10 +184,10 @@ public class UndertowSubsystemTestCase extends AbstractSubsystemBaseTest {
         protected void addExtraServices(ServiceTarget target) {
             super.addExtraServices(target);
             target.addService(Services.JBOSS_SERVICE_MODULE_LOADER, new ServiceModuleLoader(null)).install();
-            target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new NamingStoreService())
+            target.addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_NAME))
                     .setInitialMode(ServiceController.Mode.ACTIVE)
                     .install();
-            target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new NamingStoreService())
+            target.addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, new WritableServiceBasedNamingStoreService(ContextNames.JAVA_JBOSS_NAME))
                     .setInitialMode(ServiceController.Mode.ACTIVE)
                     .install();
 

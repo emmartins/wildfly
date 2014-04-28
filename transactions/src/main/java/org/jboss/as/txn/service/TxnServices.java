@@ -49,6 +49,8 @@ public final class TxnServices {
 
     public static final ServiceName JBOSS_TXN_USER_TRANSACTION = JBOSS_TXN.append("UserTransaction");
 
+    public static final ServiceName JBOSS_TXN_USER_TRANSACTION_WITH_ACCESS_CONTROL = JBOSS_TXN.append("UserTransactionWithAccessControl");
+
     public static final ServiceName JBOSS_TXN_USER_TRANSACTION_REGISTRY = JBOSS_TXN.append("UserTransactionRegistry");
 
     public static final ServiceName JBOSS_TXN_SYNCHRONIZATION_REGISTRY = JBOSS_TXN.append("TransactionSynchronizationRegistry");

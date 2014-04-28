@@ -22,13 +22,10 @@
 
 package org.jboss.as.naming;
 
-import java.util.ArrayList;
-import java.util.Enumeration;
-import java.util.HashSet;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.Set;
-import java.util.concurrent.ConcurrentSkipListSet;
+import org.jboss.as.naming.logging.NamingLogger;
+import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceRegistry;
 
 import javax.naming.Binding;
 import javax.naming.CannotProceedException;
@@ -42,12 +39,15 @@ import javax.naming.NamingException;
 import javax.naming.Reference;
 import javax.naming.event.NamingListener;
 import javax.naming.spi.ResolveResult;
-
-import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.logging.NamingLogger;
-import org.jboss.msc.service.ServiceController;
-import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceRegistry;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 /**
  * @author John Bailey
@@ -60,11 +60,13 @@ public class ServiceBasedNamingStore implements NamingStore {
     private final ServiceRegistry serviceRegistry;
     private final ServiceName serviceNameBase;
 
-    private ConcurrentSkipListSet<ServiceName> boundServices = new ConcurrentSkipListSet<ServiceName>();
+    private final BoundServices boundServices;
 
-    public ServiceBasedNamingStore(final ServiceRegistry serviceRegistry, final ServiceName serviceNameBase) {
+    public ServiceBasedNamingStore(final ServiceRegistry serviceRegistry, final Name baseName, final ServiceName serviceNameBase) {
         this.serviceRegistry = serviceRegistry;
+        this.baseName = baseName;
         this.serviceNameBase = serviceNameBase;
+        this.boundServices = new BoundServices();
     }
 
     @Override
@@ -77,33 +79,29 @@ public class ServiceBasedNamingStore implements NamingStore {
             return new NamingContext(EMPTY_NAME, this, null);
         }
         final ServiceName lookupName = buildServiceName(name);
-        Object obj = lookup(name.toString(), lookupName, dereference);
-        if (obj == null) {
-            final ServiceName lower = boundServices.lower(lookupName);
-            if (lower != null && lower.isParentOf(lookupName)) {
-                // Parent might be a reference or a link
-                obj = lookup(name.toString(), lower, dereference);
-                //if the lower is a context that has been explicitly bound then
-                //we do not return a resolve result, as this will result in an
-                //infinite loop
-                if (!(obj instanceof NamingContext)) {
-                    checkReferenceForContinuation(name, obj);
-                    return new ResolveResult(obj, suffix(lower, lookupName));
-                }
-            }
-
-            final ServiceName ceiling = boundServices.ceiling(lookupName);
-            if (ceiling != null && lookupName.isParentOf(ceiling)) {
-                if (lookupName.equals(ceiling)) {
-                    //the binder service returned null
-                    return null;
-                }
+        final ServiceController<?> serviceController = lookupService(name, lookupName);
+        if (serviceController != null) {
+            return getServiceValue(name, serviceController, dereference);
+        } else {
+            if (boundServices.hasChild(lookupName)) {
                 return new NamingContext((Name) name.clone(), this, null);
+            } else {
+                final ServiceName parent = boundServices.findParent(lookupName);
+                if (parent != null) {
+                    // Parent might be a reference or a link
+                    final Name parentName = convertToName(parent);
+                    final ServiceController<?> parentServiceController = lookupService(parentName, parent);
+                    if (parentServiceController != null) {
+                        final Object parentValue = getServiceValue(parentName, parentServiceController, dereference);
+                        if (!(parentValue instanceof NamingContext)) {
+                            checkReferenceForContinuation(name, parentValue);
+                            return new ResolveResult(parentValue, name.getSuffix(parentName.size()));
+                        }
+                    }
+                }
             }
             throw new NameNotFoundException(name.toString() + " -- " + lookupName);
         }
-
-        return obj;
     }
 
     private void checkReferenceForContinuation(final Name name, final Object object) throws CannotProceedException {
@@ -121,55 +119,55 @@ public class ServiceBasedNamingStore implements NamingStore {
         return cpe;
     }
 
-    private Object lookup(final String name, final ServiceName lookupName, boolean dereference) throws NamingException {
+    private ServiceController<?> lookupService(final Name name, final ServiceName lookupName) throws NamingException {
         try {
-            final ServiceController<?> controller = serviceRegistry.getService(lookupName);
-            if (controller != null) {
-                final Object object = controller.getValue();
-                if (dereference && object instanceof ManagedReferenceFactory) {
-                    final ManagedReference managedReference = ManagedReferenceFactory.class.cast(object).getReference();
-                    return managedReference != null ? managedReference.getInstance() : null;
-                } else {
-                    return object;
-                }
-            } else {
-                return null;
-            }
+            return serviceRegistry.getService(lookupName);
         } catch (IllegalStateException e) {
-            NameNotFoundException n = new NameNotFoundException(name);
+            NameNotFoundException n = new NameNotFoundException(name.toString());
             n.initCause(e);
             throw n;
         } catch (Throwable t) {
-            NamingException n = NamingLogger.ROOT_LOGGER.lookupError(name);
+            NamingException n = NamingLogger.ROOT_LOGGER.lookupError(name.toString());
+            n.initCause(t);
+            throw n;
+        }
+    }
+
+    private Object getServiceValue(final Name name, final ServiceController serviceController, boolean dereference) throws NamingException {
+        try {
+            final Object object = serviceController.getValue();
+            if (dereference && object instanceof ManagedReferenceFactory) {
+                final ManagedReference managedReference = ManagedReferenceFactory.class.cast(object).getReference();
+                return managedReference != null ? managedReference.getInstance() : null;
+            } else {
+                return object;
+            }
+        } catch (IllegalStateException e) {
+            NameNotFoundException n = new NameNotFoundException(name.toString());
+            n.initCause(e);
+            throw n;
+        } catch (Throwable t) {
+            NamingException n = NamingLogger.ROOT_LOGGER.lookupError(name.toString());
             n.initCause(t);
             throw n;
         }
     }
 
     public List<NameClassPair> list(final Name name) throws NamingException {
-        final ServiceName lookupName = buildServiceName(name);
-        final ServiceName floor = boundServices.floor(lookupName);
-        boolean isContextBinding = false;
-        if (floor != null && floor.isParentOf(lookupName)) {
-            // Parent might be a reference or a link
-            Object obj = lookup(name.toString(), floor, true);
-            if (obj instanceof NamingContext) {
-                isContextBinding = true;
-            } else if (obj != null) {
-                throw new RequireResolveException(convert(floor));
-            }
-        }
-
-        final List<ServiceName> children = listChildren(lookupName, isContextBinding);
-        final String[] lookupParts = lookupName.toArray();
-        final Set<String> childContexts = new HashSet<String>();
-        final List<NameClassPair> results = new ArrayList<NameClassPair>();
-        for (ServiceName child : children) {
-            final String[] childParts = child.toArray();
-            if (childParts.length > lookupParts.length + 1) {
-                childContexts.add(childParts[lookupParts.length]);
+        final ServiceName serviceName = buildServiceName(name);
+        checkIsContext(name, serviceName);
+        final Set<String> childContexts = new HashSet<>();
+        final List<NameClassPair> results = new ArrayList<>();
+        for (ServiceName childServiceName : boundServices.getChildren(serviceName)) {
+            final Name childName = convertToName(childServiceName);
+            final String childNameComponent = childName.get(name.size());
+            if (childName.size() > name.size()+1) {
+                // child of a child context
+                if (childContexts.add(childNameComponent)) {
+                    results.add(new NameClassPair(childNameComponent, Context.class.getName()));
+                }
             } else {
-                final Object binding = lookup(name.toString(), child, false);
+                final Object binding = lookup(childName, false);
                 final String bindingType;
                 if (binding instanceof ContextListManagedReferenceFactory) {
                     bindingType = ContextListManagedReferenceFactory.class.cast(binding)
@@ -181,64 +179,37 @@ public class ServiceBasedNamingStore implements NamingStore {
                         bindingType = binding.getClass().getName();
                     }
                 }
-                results.add(new NameClassPair(childParts[childParts.length - 1],bindingType));
+                results.add(new NameClassPair(childNameComponent, bindingType));
             }
-        }
-        for (String contextName : childContexts) {
-            results.add(new NameClassPair(contextName, Context.class.getName()));
         }
         return results;
     }
 
     public List<Binding> listBindings(final Name name) throws NamingException {
-        final ServiceName lookupName = buildServiceName(name);
-        final ServiceName floor = boundServices.floor(lookupName);
-        boolean isContextBinding = false;
-        if (floor != null && floor.isParentOf(lookupName)) {
-            // Parent might be a reference or a link
-            Object obj = lookup(name.toString(), floor, true);
-            if (obj instanceof NamingContext) {
-                isContextBinding = true;
-            } else if (obj != null) {
-                throw new RequireResolveException(convert(floor));
-            }
-        }
-        final List<ServiceName> children = listChildren(lookupName, isContextBinding);
-        final String[] lookupParts = lookupName.toArray();
-        final Set<String> childContexts = new HashSet<String>();
-        final List<Binding> results = new ArrayList<Binding>();
-        for (ServiceName child : children) {
-            final String[] childParts = child.toArray();
-            if (childParts.length > lookupParts.length + 1) {
-                childContexts.add(childParts[lookupParts.length]);
+        final ServiceName serviceName = buildServiceName(name);
+        checkIsContext(name, serviceName);
+        final Set<String> childContexts = new HashSet<>();
+        final List<Binding> results = new ArrayList<>();
+        for (ServiceName childServiceName : boundServices.getChildren(serviceName)) {
+            final Name childName = convertToName(childServiceName);
+            final String childNameComponent = childName.get(name.size());
+            if (childName.size() > name.size()+1) {
+                // child of a child context
+                if (childContexts.add(childNameComponent)) {
+                    results.add(new Binding(childNameComponent, new NamingContext(((Name) name.clone()).add(childNameComponent), this, null)));
+                }
             } else {
-                final Object binding = lookup(name.toString(), child, true);
-                results.add(new Binding(childParts[childParts.length - 1], binding));
+                final Object binding = lookup(childName, true);
+                results.add(new Binding(childNameComponent, binding));
             }
-        }
-        for (String contextName : childContexts) {
-            results.add(new Binding(contextName, new NamingContext(((Name) name.clone()).add(contextName), this, null)));
         }
         return results;
     }
 
-    private List<ServiceName> listChildren(final ServiceName name, boolean isContextBinding) throws NamingException {
-        final ConcurrentSkipListSet<ServiceName> boundServices = this.boundServices;
-        if (!isContextBinding && boundServices.contains(name)) {
-            throw NamingLogger.ROOT_LOGGER.cannotListNonContextBinding();
+    private void checkIsContext(Name name, ServiceName lookupName) throws NamingException {
+        if (name.isEmpty()) {
+            return;
         }
-        final NavigableSet<ServiceName> tail = boundServices.tailSet(name);
-        final List<ServiceName> children = new ArrayList<ServiceName>();
-        for (ServiceName next : tail) {
-            if (name.isParentOf(next)) {
-                if (!name.equals(next)) {
-                    children.add(next);
-                }
-            } else {
-                break;
-            }
-        }
-        return children;
     }
 
     public void close() throws NamingException {
@@ -252,11 +223,9 @@ public class ServiceBasedNamingStore implements NamingStore {
     }
 
     public void add(final ServiceName serviceName) {
-        final ConcurrentSkipListSet<ServiceName> boundServices = this.boundServices;
-        if (boundServices.contains(serviceName)) {
+        if (!boundServices.add(serviceName)) {
             throw NamingLogger.ROOT_LOGGER.serviceAlreadyBound(serviceName);
         }
-        boundServices.add(serviceName);
     }
 
     public void remove(final ServiceName serviceName) {
@@ -275,7 +244,7 @@ public class ServiceBasedNamingStore implements NamingStore {
         return current;
     }
 
-    private Name convert(ServiceName serviceName) {
+    private Name convertToName(ServiceName serviceName) {
         String[] c = serviceName.toArray();
         CompositeName name = new CompositeName();
         int baseIndex = serviceNameBase.toArray().length;
@@ -286,24 +255,20 @@ public class ServiceBasedNamingStore implements NamingStore {
                 throw new IllegalStateException(e);
             }
         }
-
         return name;
     }
 
-    private Name suffix(ServiceName parent, ServiceName child) {
-        String[] p = parent.toArray();
-        String[] c = child.toArray();
-
-        CompositeName name = new CompositeName();
-        for (int i = p.length; i < c.length; i++) {
-            try {
-                name.add(c[i]);
-            } catch (InvalidNameException e) {
-                throw new IllegalStateException(e);
+    private String convertToString(ServiceName serviceName) {
+        String[] c = serviceName.toArray();
+        StringBuilder name = new StringBuilder();
+        int baseIndex = serviceNameBase.toArray().length;
+        for (int i = baseIndex; i < c.length; i++) {
+            if (i != baseIndex) {
+                name.append('/');
             }
+            name.append(c[i]);
         }
-
-        return name;
+        return name.toString();
     }
 
     protected ServiceName getServiceNameBase() {
@@ -316,41 +281,63 @@ public class ServiceBasedNamingStore implements NamingStore {
 
     @Override
     public Name getBaseName() throws NamingException {
-        if (baseName == null) {
-            baseName = setBaseName();
-        }
         return baseName;
     }
 
-    private Name setBaseName() throws NamingException {
-        if (serviceNameBase.equals(ContextNames.EXPORTED_CONTEXT_SERVICE_NAME)
-                || ContextNames.EXPORTED_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:jboss/exported");
+    private static class BoundServices {
+
+        private final ConcurrentSkipListSet<ServiceName> boundServices = new ConcurrentSkipListSet<>();
+
+        public boolean add(ServiceName serviceName) {
+            return boundServices.add(serviceName);
         }
-        if (serviceNameBase.equals(ContextNames.JBOSS_CONTEXT_SERVICE_NAME)
-                || ContextNames.JBOSS_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:jboss");
+
+        public boolean remove(ServiceName serviceName) {
+            return boundServices.remove(serviceName);
         }
-        if (serviceNameBase.equals(ContextNames.APPLICATION_CONTEXT_SERVICE_NAME)
-                || ContextNames.APPLICATION_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:app");
+
+        public ServiceName findParent(ServiceName serviceName) {
+            final ServiceName lower = boundServices.lower(serviceName);
+            return (lower != null && lower.isParentOf(serviceName)) ? lower : null;
         }
-        if (serviceNameBase.equals(ContextNames.MODULE_CONTEXT_SERVICE_NAME)
-                || ContextNames.MODULE_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:module");
+
+        public boolean hasChild(ServiceName serviceName) {
+            final ServiceName higher = boundServices.higher(serviceName);
+            return higher != null && serviceName.isParentOf(higher);
         }
-        if (serviceNameBase.equals(ContextNames.COMPONENT_CONTEXT_SERVICE_NAME)
-                || ContextNames.COMPONENT_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:comp");
+
+        public List<ServiceName> getChildren(ServiceName parent) {
+            List<ServiceName> children = new ArrayList<>();
+            for(ServiceName child : boundServices.tailSet(parent, false)) {
+                if (parent.isParentOf(child)) {
+                    children.add(child);
+                } else {
+                    break;
+                }
+            }
+            return children;
         }
-        if (serviceNameBase.equals(ContextNames.GLOBAL_CONTEXT_SERVICE_NAME)
-                || ContextNames.GLOBAL_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:global");
+
+        public void clear() {
+            boundServices.clear();
         }
-        if (serviceNameBase.equals(ContextNames.JAVA_CONTEXT_SERVICE_NAME)
-                || ContextNames.JAVA_CONTEXT_SERVICE_NAME.isParentOf(serviceNameBase)) {
-            return new CompositeName("java:");
+    }
+
+    public Set<ServiceName> getBoundServicesSet() {
+        return Collections.unmodifiableSet(boundServices.boundServices);
+    }
+
+    public Map<String, ServiceName> getBoundServicesMap() throws NamingException {
+        final Map<String, ServiceName> result = new HashMap<>();
+        final String baseName = getBaseName().toString();
+        for (ServiceName serviceName : boundServices.boundServices) {
+            result.put(new StringBuilder(baseName).append('/').append(convertToString(serviceName)).toString(), serviceName);
         }
-        return new CompositeName();
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "ServiceBasedNamingStore("+serviceNameBase+")";
     }
 }

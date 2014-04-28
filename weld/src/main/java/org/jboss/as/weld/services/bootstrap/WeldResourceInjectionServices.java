@@ -161,8 +161,7 @@ public class WeldResourceInjectionServices extends AbstractResourceInjectionServ
 
     @Override
     protected BindInfo getBindInfo(String result) {
-        return ContextNames.bindInfoForEnvEntry(moduleDescription.getApplicationName(), moduleDescription.getModuleName(),
-                moduleDescription.getModuleName(), false, result);
+        return ContextNames.bindInfoFor(moduleDescription.getApplicationName(), moduleDescription.getModuleName(), result);
     }
 
     @Override

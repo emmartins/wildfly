@@ -379,11 +379,11 @@ public class CacheContainerAdd extends AbstractAddStepHandler {
 
     private static ContextNames.BindInfo createCacheContainerBinding(String jndiName, String container) {
         JndiName name = (jndiName != null) ? JndiNameFactory.parse(jndiName) : JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, InfinispanExtension.SUBSYSTEM_NAME, "container", container);
-        return ContextNames.bindInfoFor(name.getAbsoluteName());
+        return ContextNames.bindInfoFor(name);
     }
 
     private static ContextNames.BindInfo createChannelBinding(String channel) {
-        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, JGroupsExtension.SUBSYSTEM_NAME, "channel", channel).getAbsoluteName());
+        return ContextNames.bindInfoFor(JndiNameFactory.createJndiName(JndiNameFactory.DEFAULT_JNDI_NAMESPACE, JGroupsExtension.SUBSYSTEM_NAME, "channel", channel));
     }
 
     static class EmbeddedCacheManagerDependencies implements EmbeddedCacheManagerConfigurationService.Dependencies {

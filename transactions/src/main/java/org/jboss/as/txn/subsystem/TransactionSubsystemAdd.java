@@ -22,17 +22,6 @@
 
 package org.jboss.as.txn.subsystem;
 
-import static org.jboss.as.txn.subsystem.CommonAttributes.CM_RESOURCE;
-import static org.jboss.as.txn.subsystem.CommonAttributes.JTS;
-import static org.jboss.as.txn.subsystem.CommonAttributes.USEHORNETQSTORE;
-import static org.jboss.as.txn.subsystem.CommonAttributes.USE_JDBC_STORE;
-
-import java.util.LinkedList;
-import java.util.List;
-
-import javax.transaction.TransactionSynchronizationRegistry;
-import javax.transaction.UserTransaction;
-
 import com.arjuna.ats.internal.arjuna.utils.UuidProcessId;
 import com.arjuna.ats.jbossatx.jta.RecoveryManagerService;
 import com.arjuna.ats.jta.common.JTAEnvironmentBean;
@@ -47,19 +36,13 @@ import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.controller.services.path.PathManager;
 import org.jboss.as.controller.services.path.PathManagerService;
 import org.jboss.as.jacorb.service.CorbaNamingService;
-import org.jboss.as.naming.ManagedReferenceFactory;
-import org.jboss.as.naming.ManagedReferenceInjector;
-import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.ValueManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
-import org.jboss.as.naming.service.BinderService;
 import org.jboss.as.network.SocketBinding;
 import org.jboss.as.network.SocketBindingManager;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
 import org.jboss.as.server.deployment.Phase;
 import org.jboss.as.txn.deployment.TransactionCDIProcessor;
-import org.jboss.as.txn.deployment.TransactionJndiBindingProcessor;
 import org.jboss.as.txn.deployment.TransactionLeakRollbackProcessor;
 import org.jboss.as.txn.logging.TransactionLogger;
 import org.jboss.as.txn.service.ArjunaObjectStoreEnvironmentService;
@@ -71,23 +54,27 @@ import org.jboss.as.txn.service.TransactionManagerService;
 import org.jboss.as.txn.service.TransactionSynchronizationRegistryService;
 import org.jboss.as.txn.service.TxnServices;
 import org.jboss.as.txn.service.UserTransactionAccessControlService;
-import org.jboss.as.txn.service.UserTransactionBindingService;
 import org.jboss.as.txn.service.UserTransactionRegistryService;
 import org.jboss.as.txn.service.UserTransactionService;
+import org.jboss.as.txn.service.UserTransactionWithAccessControlService;
 import org.jboss.as.txn.service.XATerminatorService;
 import org.jboss.dmr.ModelNode;
-import org.jboss.msc.inject.InjectionException;
-import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceBuilder;
 import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceController.Mode;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
-import org.jboss.msc.value.ImmediateValue;
 import org.jboss.tm.JBossXATerminator;
 import org.jboss.tm.usertx.UserTransactionRegistry;
 import org.omg.CORBA.ORB;
 
+import java.util.LinkedList;
+import java.util.List;
+
+import static org.jboss.as.txn.subsystem.CommonAttributes.CM_RESOURCE;
+import static org.jboss.as.txn.subsystem.CommonAttributes.JTS;
+import static org.jboss.as.txn.subsystem.CommonAttributes.USEHORNETQSTORE;
+import static org.jboss.as.txn.subsystem.CommonAttributes.USE_JDBC_STORE;
 
 /**
  * Adds the transaction management subsystem.
@@ -226,78 +213,15 @@ class TransactionSubsystemAdd extends AbstractBoottimeAddStepHandler {
         context.addStep(new AbstractDeploymentChainStep() {
             protected void execute(final DeploymentProcessorTarget processorTarget) {
                 processorTarget.addDeploymentProcessor(TransactionExtension.SUBSYSTEM_NAME, Phase.PARSE, Phase.PARSE_TRANSACTION_ROLLBACK_ACTION, new TransactionLeakRollbackProcessor());
-                processorTarget.addDeploymentProcessor(TransactionExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_TRANSACTION_BINDINGS, new TransactionJndiBindingProcessor());
+                //processorTarget.addDeploymentProcessor(TransactionExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_TRANSACTION_BINDINGS, new TransactionJndiBindingProcessor());
                 processorTarget.addDeploymentProcessor(TransactionExtension.SUBSYSTEM_NAME, Phase.DEPENDENCIES, Phase.DEPENDENCIES_TRANSACTIONS, new TransactionCDIProcessor());
             }
         }, OperationContext.Stage.RUNTIME);
 
-        //bind the TransactionManger and the TSR into JNDI
-        final BinderService tmBinderService = new BinderService("TransactionManager");
-        final ServiceBuilder<ManagedReferenceFactory> tmBuilder = context.getServiceTarget().addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME.append("TransactionManager"), tmBinderService);
-        tmBuilder.addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, tmBinderService.getNamingStoreInjector());
-        tmBuilder.addDependency(TransactionManagerService.SERVICE_NAME, javax.transaction.TransactionManager.class, new Injector<javax.transaction.TransactionManager>() {
-            @Override
-            public void inject(final javax.transaction.TransactionManager value) throws InjectionException {
-                tmBinderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(value)));
-            }
-
-            @Override
-            public void uninject() {
-                tmBinderService.getManagedObjectInjector().uninject();
-            }
-        });
-        tmBuilder.addListener(verificationHandler);
-        controllers.add(tmBuilder.install());
-
-        final BinderService tmLegacyBinderService = new BinderService("TransactionManager");
-        final ServiceBuilder<ManagedReferenceFactory> tmLegacyBuilder = context.getServiceTarget().addService(ContextNames.JAVA_CONTEXT_SERVICE_NAME.append("TransactionManager"), tmLegacyBinderService);
-        tmLegacyBuilder.addDependency(ContextNames.JAVA_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, tmLegacyBinderService.getNamingStoreInjector());
-        tmLegacyBuilder.addDependency(TransactionManagerService.SERVICE_NAME, javax.transaction.TransactionManager.class, new Injector<javax.transaction.TransactionManager>() {
-            @Override
-            public void inject(final javax.transaction.TransactionManager value) throws InjectionException {
-                tmLegacyBinderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(value)));
-            }
-
-            @Override
-            public void uninject() {
-                tmLegacyBinderService.getManagedObjectInjector().uninject();
-            }
-        });
-        tmLegacyBuilder.addListener(verificationHandler);
-        controllers.add(tmLegacyBuilder.install());
-
-        final BinderService tsrBinderService = new BinderService("TransactionSynchronizationRegistry");
-        final ServiceBuilder<ManagedReferenceFactory> tsrBuilder = context.getServiceTarget().addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME.append("TransactionSynchronizationRegistry"), tsrBinderService);
-        tsrBuilder.addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, tsrBinderService.getNamingStoreInjector());
-        tsrBuilder.addDependency(TransactionSynchronizationRegistryService.SERVICE_NAME, TransactionSynchronizationRegistry.class, new Injector<TransactionSynchronizationRegistry>() {
-            @Override
-            public void inject(final TransactionSynchronizationRegistry value) throws InjectionException {
-                tsrBinderService.getManagedObjectInjector().inject(new ValueManagedReferenceFactory(new ImmediateValue<Object>(value)));
-            }
-
-            @Override
-            public void uninject() {
-                tsrBinderService.getManagedObjectInjector().uninject();
-            }
-        });
-        tsrBuilder.addListener(verificationHandler);
-        controllers.add(tsrBuilder.install());
-
         // Install the UserTransactionAccessControlService
-        final UserTransactionAccessControlService lookupControlService = new UserTransactionAccessControlService();
-        context.getServiceTarget().addService(UserTransactionAccessControlService.SERVICE_NAME, lookupControlService).install();
-
-        // Bind the UserTransaction into JNDI
-        final UserTransactionBindingService userTransactionBindingService = new UserTransactionBindingService("UserTransaction");
-        final ServiceBuilder<ManagedReferenceFactory> utBuilder = context.getServiceTarget().addService(ContextNames.JBOSS_CONTEXT_SERVICE_NAME.append("UserTransaction"), userTransactionBindingService);
-        utBuilder.addDependency(ContextNames.JBOSS_CONTEXT_SERVICE_NAME, ServiceBasedNamingStore.class, userTransactionBindingService.getNamingStoreInjector())
-                .addDependency(UserTransactionAccessControlService.SERVICE_NAME, UserTransactionAccessControlService.class, userTransactionBindingService.getUserTransactionAccessControlServiceInjector())
-                .addDependency(UserTransactionService.SERVICE_NAME, UserTransaction.class,
-                        new ManagedReferenceInjector<UserTransaction>(userTransactionBindingService.getManagedObjectInjector()));
-        utBuilder.addListener(verificationHandler);
-        controllers.add(utBuilder.install());
-
-
+        controllers.add(UserTransactionAccessControlService.addService(context.getServiceTarget(), verificationHandler));
+        // Install the UserTransaction with access control service
+        controllers.add(UserTransactionWithAccessControlService.addService(context.getServiceTarget(), verificationHandler));
     }
 
     private void performObjectStoreBoottime(OperationContext context, ModelNode model,
@@ -342,8 +266,7 @@ class TransactionSubsystemAdd extends AbstractBoottimeAddStepHandler {
 
         controllers.add(TransactionManagerService.addService(target, verificationHandler));
         controllers.add(UserTransactionService.addService(target, verificationHandler));
-        controllers.add(target.addService(TxnServices.JBOSS_TXN_USER_TRANSACTION_REGISTRY, new UserTransactionRegistryService())
-                .addListener(verificationHandler).setInitialMode(ServiceController.Mode.ACTIVE).install());
+        controllers.add(UserTransactionRegistryService.addService(target, verificationHandler));
         controllers.add(TransactionSynchronizationRegistryService.addService(target, verificationHandler));
 
     }

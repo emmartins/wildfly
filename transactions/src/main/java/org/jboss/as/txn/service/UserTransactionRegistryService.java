@@ -22,8 +22,11 @@
 
 package org.jboss.as.txn.service;
 
+import org.jboss.as.controller.ServiceVerificationHandler;
 import org.jboss.msc.service.Service;
+import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
+import org.jboss.msc.service.ServiceTarget;
 import org.jboss.msc.service.StartContext;
 import org.jboss.msc.service.StartException;
 import org.jboss.msc.service.StopContext;
@@ -37,6 +40,12 @@ import org.jboss.tm.usertx.UserTransactionRegistry;
 public class UserTransactionRegistryService implements Service<UserTransactionRegistry> {
 
     public static final ServiceName SERVICE_NAME = TxnServices.JBOSS_TXN_USER_TRANSACTION_REGISTRY;
+
+    public static ServiceController<UserTransactionRegistry> addService(final ServiceTarget target, ServiceVerificationHandler verificationHandler) {
+        return target.addService(SERVICE_NAME, new UserTransactionRegistryService())
+                .addListener(verificationHandler)
+                .install();
+    }
 
     private UserTransactionRegistry userTransactionRegistry;
 

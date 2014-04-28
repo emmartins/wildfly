@@ -25,6 +25,7 @@ package org.jboss.as.jacorb.service;
 import org.jacorb.config.Configuration;
 import org.jboss.as.jacorb.logging.JacORBLogger;
 import org.jboss.as.jacorb.naming.CorbaNamingContext;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceName;
@@ -85,7 +86,7 @@ public class CorbaNamingService implements Service<NamingContextExt> {
         }
 
         // bind the corba naming service to JNDI.
-        CorbaServiceUtil.bindObject(context.getChildTarget(), "corbanaming", namingService);
+        ContextNames.bindInfoFor("java:jboss/corbanaming").bind(context.getChildTarget(), namingService);
 
         JacORBLogger.ROOT_LOGGER.corbaNamingServiceStarted();
         JacORBLogger.ROOT_LOGGER.debugNamingServiceIOR(orb.object_to_string(namingService));

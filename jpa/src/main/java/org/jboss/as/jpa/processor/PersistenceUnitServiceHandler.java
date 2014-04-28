@@ -358,7 +358,7 @@ public class PersistenceUnitServiceHandler {
                         useDefaultDataSource = true;
                     }
                     else {
-                        builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
+                        builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
                         useDefaultDataSource = false;
                     }
                 } else {
@@ -368,7 +368,7 @@ public class PersistenceUnitServiceHandler {
             }
             if (nonJtaDataSource != null && nonJtaDataSource.length() > 0) {
                 if (nonJtaDataSource.startsWith("java:")) {
-                    builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
+                    builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
                     useDefaultDataSource = false;
                 } else {
                     builder.addDependency(AbstractDataSourceService.SERVICE_NAME_BASE.append(nonJtaDataSource), new CastingInjector<>(service.getNonJtaDataSourceInjector(), DataSource.class));
@@ -501,7 +501,7 @@ public class PersistenceUnitServiceHandler {
                         useDefaultDataSource = true;
                     }
                     else {
-                        builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
+                        builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
                         useDefaultDataSource = false;
                     }
                 } else {
@@ -511,7 +511,7 @@ public class PersistenceUnitServiceHandler {
             }
             if (nonJtaDataSource != null && nonJtaDataSource.length() > 0) {
                 if (nonJtaDataSource.startsWith("java:")) {
-                    builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
+                    builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
                     useDefaultDataSource = false;
                 } else {
                     builder.addDependency(AbstractDataSourceService.SERVICE_NAME_BASE.append(nonJtaDataSource), new CastingInjector<>(service.getNonJtaDataSourceInjector(), DataSource.class));
@@ -628,7 +628,7 @@ public class PersistenceUnitServiceHandler {
                         useDefaultDataSource = true;
                     }
                     else {
-                        builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
+                        builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getJtaDataSourceInjector()));
                         useDefaultDataSource = false;
                     }
                 } else {
@@ -638,7 +638,7 @@ public class PersistenceUnitServiceHandler {
             }
             if (nonJtaDataSource != null && nonJtaDataSource.length() > 0) {
                 if (nonJtaDataSource.startsWith("java:")) {
-                    builder.addDependency(ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
+                    builder.addDependency(ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, nonJtaDataSource).getBinderServiceName(), ManagedReferenceFactory.class, new ManagedReferenceFactoryInjector(service.getNonJtaDataSourceInjector()));
                     useDefaultDataSource = false;
                 } else {
                     builder.addDependency(AbstractDataSourceService.SERVICE_NAME_BASE.append(nonJtaDataSource), new CastingInjector<>(service.getNonJtaDataSourceInjector(), DataSource.class));
@@ -712,7 +712,7 @@ public class PersistenceUnitServiceHandler {
             String jndiName = pu.getProperties().get(ENTITYMANAGER_JNDI_PROPERTY).toString();
             final ContextNames.BindInfo bindingInfo;
             if (jndiName.startsWith("java:")) {
-                bindingInfo =  ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jndiName);
+                bindingInfo =  ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jndiName);
             }
             else {
                 bindingInfo = ContextNames.bindInfoFor(jndiName);
@@ -747,7 +747,7 @@ public class PersistenceUnitServiceHandler {
             String jndiName = pu.getProperties().get(ENTITYMANAGERFACTORY_JNDI_PROPERTY).toString();
             final ContextNames.BindInfo bindingInfo;
             if (jndiName.startsWith("java:")) {
-                bindingInfo =  ContextNames.bindInfoForEnvEntry(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jndiName);
+                bindingInfo =  ContextNames.bindInfoFor(eeModuleDescription.getApplicationName(), eeModuleDescription.getModuleName(), eeModuleDescription.getModuleName(), false, jndiName);
             }
             else {
                 bindingInfo = ContextNames.bindInfoFor(jndiName);

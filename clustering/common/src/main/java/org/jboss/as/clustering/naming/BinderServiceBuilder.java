@@ -47,6 +47,7 @@ public class BinderServiceBuilder {
         String name = binding.getBindName();
         BinderService binder = new BinderService(name);
         ServiceBuilder<ManagedReferenceFactory> builder = this.target.addService(binding.getBinderServiceName(), binder)
+                // FIXME emmartins use no aliases to bind jndi entries, these won't add the entry to the alias related naming store
                 .addAliases(ContextNames.JAVA_CONTEXT_SERVICE_NAME.append(name))
                 .addDependency(targetServiceName, targetClass, new ManagedReferenceInjector<T>(binder.getManagedObjectInjector()))
                 .addDependency(binding.getParentContextServiceName(), ServiceBasedNamingStore.class, binder.getNamingStoreInjector())

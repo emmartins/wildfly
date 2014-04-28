@@ -23,6 +23,7 @@
 package org.jboss.as.ee.component;
 
 import org.jboss.as.ee.logging.EeLogger;
+import org.jboss.as.naming.deployment.JndiName;
 
 /**
  * A binding into JNDI.  This class contains the mechanism to construct the binding service.  In particular
@@ -32,7 +33,7 @@ import org.jboss.as.ee.logging.EeLogger;
  * @author <a href="mailto:david.lloyd@redhat.com">David M. Lloyd</a>
  */
 public final class BindingConfiguration {
-    private final String name;
+    private final JndiName name;
     private final InjectionSource source;
 
     /**
@@ -49,6 +50,17 @@ public final class BindingConfiguration {
         if (source == null) {
             throw EeLogger.ROOT_LOGGER.nullVar("source");
         }
+        this.name = new JndiName(name);
+        this.source = source;
+    }
+
+    public BindingConfiguration(final JndiName name, final InjectionSource source) {
+        if (name == null) {
+            throw EeLogger.ROOT_LOGGER.nullVar("name");
+        }
+        if (source == null) {
+            throw EeLogger.ROOT_LOGGER.nullVar("source");
+        }
         this.name = name;
         this.source = source;
     }
@@ -59,7 +71,7 @@ public final class BindingConfiguration {
      *
      * @return the name into which this binding should be made
      */
-    public String getName() {
+    public JndiName getName() {
         return name;
     }
 
@@ -72,6 +84,10 @@ public final class BindingConfiguration {
         return source;
     }
 
+    @Override
+    public String toString() {
+        return "BindingConfiguration[name="+name+", source="+source+"]";
+    }
 
     public boolean equals(Object other) {
         if (!(other instanceof BindingConfiguration))

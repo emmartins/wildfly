@@ -1,6 +1,6 @@
 /*
  * JBoss, Home of Professional Open Source
- * Copyright 2010, Red Hat Inc., and individual contributors as indicated
+ * Copyright 2014, Red Hat Inc., and individual contributors as indicated
  * by the @authors tag. See the copyright.txt in the distribution for a
  * full listing of individual contributors.
  *
@@ -21,60 +21,53 @@
  */
 package org.jboss.as.weld.deployment.processors;
 
+import org.jboss.as.ee.component.BindingConfiguration;
+import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.component.ServiceInjectionSource;
+import org.jboss.as.ee.structure.DeploymentType;
+import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.ee.weld.WeldDeploymentMarker;
-import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
-import org.jboss.as.weld.WeldBootstrapService;
-import org.jboss.as.weld.logging.WeldLogger;
-import org.jboss.as.weld.arquillian.WeldContextSetup;
-import org.jboss.as.weld.deployment.BeanDeploymentArchiveImpl;
-import org.jboss.as.weld.deployment.WeldAttachments;
 import org.jboss.as.weld.services.BeanManagerService;
 import org.jboss.as.weld.util.Utils;
 import org.jboss.msc.service.ServiceName;
-import org.jboss.msc.service.ServiceTarget;
+
+import javax.enterprise.inject.spi.BeanManager;
 
 /**
- * {@link DeploymentUnitProcessor} that binds the bean manager to JNDI
+ * {@link org.jboss.as.server.deployment.DeploymentUnitProcessor} that binds the bean manager to JNDI
  *
- * @author Stuart Douglas
+ * @author Eduardo Martins
  */
-public class WeldBeanManagerServiceProcessor implements DeploymentUnitProcessor {
+public class WeldBeanManagerJndiProcessor implements DeploymentUnitProcessor {
 
     @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
-
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
+        // do not bind on EAR's modules
+        if (DeploymentTypeMarker.isType(DeploymentType.EAR, deploymentUnit)) {
+            return;
+        }
         final DeploymentUnit topLevelDeployment = Utils.getRootDeploymentUnit(deploymentUnit);
-        final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
         if (!WeldDeploymentMarker.isPartOfWeldDeployment(topLevelDeployment)) {
             return;
         }
-
-        BeanDeploymentArchiveImpl rootBda = deploymentUnit
-                .getAttachment(WeldAttachments.DEPLOYMENT_ROOT_BEAN_DEPLOYMENT_ARCHIVE);
-        if (rootBda == null) {
-            // this archive is not actually a bean archive.
-            // then use the top level root bda
-            rootBda = topLevelDeployment.getAttachment(WeldAttachments.DEPLOYMENT_ROOT_BEAN_DEPLOYMENT_ARCHIVE);
-        }
-        if (rootBda == null) {
-            WeldLogger.ROOT_LOGGER.couldNotFindBeanManagerForDeployment(deploymentUnit.getName());
+        final EEModuleDescription moduleDescription = deploymentUnit.getAttachment(org.jboss.as.ee.component.Attachments.EE_MODULE_DESCRIPTION);
+        if (moduleDescription == null) {
             return;
         }
-
-        final ServiceName weldServiceName = topLevelDeployment.getServiceName().append(WeldBootstrapService.SERVICE_NAME);
-
-        // add the BeanManager service
+        // create the java:comp/BeanManager binding configuration and add it to all components
         final ServiceName beanManagerServiceName = BeanManagerService.serviceName(deploymentUnit);
-        BeanManagerService beanManagerService = new BeanManagerService(rootBda.getId());
-        serviceTarget.addService(beanManagerServiceName, beanManagerService).addDependency(weldServiceName,
-                WeldBootstrapService.class, beanManagerService.getWeldContainer()).install();
-
-        deploymentUnit.addToAttachmentList(Attachments.SETUP_ACTIONS, new WeldContextSetup());
+        final ServiceInjectionSource serviceInjectionSource = new ServiceInjectionSource(beanManagerServiceName, BeanManager.class);
+        final BindingConfiguration bindingConfiguration = new BindingConfiguration("java:comp/BeanManager", serviceInjectionSource);
+        moduleDescription.getSharedCompBindingConfigurations().add(bindingConfiguration);
+        // FIXME emmartins: find out why this is needed
+        if (!DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit) && deploymentUnit.getName().endsWith(".jar")) {
+            moduleDescription.getModuleBindingConfigurations().add(bindingConfiguration);
+        }
     }
 
     @Override

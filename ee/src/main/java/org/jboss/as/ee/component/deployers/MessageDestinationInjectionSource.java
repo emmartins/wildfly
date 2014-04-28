@@ -29,6 +29,7 @@ import org.jboss.as.ee.component.EEApplicationDescription;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.naming.ManagedReferenceFactory;
 import org.jboss.as.naming.deployment.ContextNames;
+import org.jboss.as.naming.deployment.JndiName;
 import org.jboss.as.server.deployment.Attachments;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
@@ -63,22 +64,9 @@ public class MessageDestinationInjectionSource extends InjectionSource {
         final String moduleName = resolutionContext.getModuleName();
         final String componentName = resolutionContext.getComponentName();
         final boolean compUsesModule = resolutionContext.isCompUsesModule();
-        final String lookupName;
-        if (!this.resolvedLookupName.contains(":")) {
-            if (componentName != null && !compUsesModule) {
-                lookupName = "java:comp/env/" + this.resolvedLookupName;
-            } else if (compUsesModule) {
-                lookupName = "java:module/env/" + this.resolvedLookupName;
-            } else {
-                lookupName = "java:jboss/env" + this.resolvedLookupName;
-            }
-        } else if (this.resolvedLookupName.startsWith("java:comp/") && compUsesModule) {
-            lookupName = "java:module/" + this.resolvedLookupName.substring(10);
-        } else {
-            lookupName = this.resolvedLookupName;
-        }
-        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(applicationName, moduleName, componentName, lookupName);
-        if (lookupName.startsWith("java:")) {
+        final JndiName lookupName = new JndiName(this.resolvedLookupName);
+        if (lookupName.isJava()) {
+            final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(applicationName, moduleName, componentName, !compUsesModule, this.resolvedLookupName);
             serviceBuilder.addDependency(bindInfo.getBinderServiceName(), ManagedReferenceFactory.class, injector);
         }
     }

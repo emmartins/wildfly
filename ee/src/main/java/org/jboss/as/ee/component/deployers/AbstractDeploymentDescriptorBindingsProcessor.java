@@ -93,7 +93,7 @@ public abstract class AbstractDeploymentDescriptorBindingsProcessor implements D
 
         if (environment != null) {
             final List<BindingConfiguration> bindings = processDescriptorEntries(deploymentUnit, environment, description, null, module.getClassLoader(), deploymentReflectionIndex, applicationClasses);
-            description.getBindingConfigurations().addAll(bindings);
+            description.getModuleBindingConfigurations().addAll(bindings);
         }
         for (final ComponentDescription componentDescription : description.getComponentDescriptions()) {
             if (componentDescription.getDeploymentDescriptorEnvironment() != null) {

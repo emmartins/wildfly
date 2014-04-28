@@ -24,6 +24,8 @@ package org.jboss.as.ee.component.deployers;
 
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.EEModuleDescription;
+import org.jboss.as.ee.structure.DeploymentType;
+import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -44,7 +46,9 @@ public final class EEModuleInitialProcessor implements DeploymentUnitProcessor {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         final String deploymentUnitName = deploymentUnit.getName();
         final String moduleName;
-        if (deploymentUnitName.endsWith(".war") || deploymentUnitName.endsWith(".wab") || deploymentUnitName.endsWith(".jar") || deploymentUnitName.endsWith(".ear") || deploymentUnitName.endsWith(".rar")) {
+        if (deploymentUnitName.endsWith(".war")) {
+            moduleName = deploymentUnitName.substring(0, deploymentUnitName.length() - 4);
+        } else if (deploymentUnitName.endsWith(".wab") || deploymentUnitName.endsWith(".jar") || deploymentUnitName.endsWith(".ear") || deploymentUnitName.endsWith(".rar")) {
             moduleName = deploymentUnitName.substring(0, deploymentUnitName.length() - 4);
         } else {
             moduleName = deploymentUnitName;
@@ -59,7 +63,7 @@ public final class EEModuleInitialProcessor implements DeploymentUnitProcessor {
             //an appname of null means use the module name
             appName = null;
         }
-        deploymentUnit.putAttachment(Attachments.EE_MODULE_DESCRIPTION, new EEModuleDescription(appName, moduleName, earApplicationName, appClient));
+        deploymentUnit.putAttachment(Attachments.EE_MODULE_DESCRIPTION, new EEModuleDescription(appName, moduleName, earApplicationName, (DeploymentTypeMarker.isType(DeploymentType.APPLICATION_CLIENT, deploymentUnit) || DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit)), appClient));
     }
 
     public void undeploy(final DeploymentUnit context) {

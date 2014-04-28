@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.jboss.as.jacorb.logging.JacORBLogger;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceName;
@@ -168,7 +169,7 @@ public class CorbaPOAService implements Service<POA> {
 
         // check if the POA should be bound to JNDI under java:/jboss.
         if (this.bindingName != null) {
-            CorbaServiceUtil.bindObject(context.getChildTarget(), this.bindingName, this.poa);
+            ContextNames.bindInfoFor("java:jboss/"+this.bindingName).bind(context.getChildTarget(), this.poa);
         }
 
         // activate the created POA.

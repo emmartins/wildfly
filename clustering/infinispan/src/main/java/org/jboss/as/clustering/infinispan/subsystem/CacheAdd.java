@@ -322,7 +322,7 @@ public abstract class CacheAdd extends AbstractAddStepHandler {
     }
 
     private static ContextNames.BindInfo createCacheBinding(JndiName name) {
-        return ContextNames.bindInfoFor(name.getAbsoluteName());
+        return ContextNames.bindInfoFor(name);
     }
 
     private static <T> void addDependency(ServiceBuilder<?> builder, Dependency<T> dependency) {

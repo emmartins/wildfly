@@ -96,7 +96,7 @@ public class DirectConnectionFactoryInjectionSource extends InjectionSource {
         SUBSYSTEM_RA_LOGGER.debugf("@ConnectionFactoryDefinition: %s for %s binding to %s ", interfaceName, resourceAdapter, jndiName);
 
 
-        ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
+        ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), jndiName);
 
         DirectConnectionFactoryActivatorService service = new DirectConnectionFactoryActivatorService(jndiName, interfaceName, resourceAdapter,
                                                                     raId, maxPoolSize, minPoolSize,

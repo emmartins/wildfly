@@ -98,5 +98,10 @@ public abstract class InjectionSource {
         public String getApplicationName() {
             return applicationName;
         }
+
+        @Override
+        public String toString() {
+            return "ResolutionContext[app="+applicationName+", module="+moduleName+", comp="+componentName+"]";
+        }
     }
 }

@@ -23,14 +23,32 @@ public class DefaultNamespaceContextSelectorService implements Service<Void> {
 
     private static final CompositeName EMPTY_NAME = new CompositeName();
 
+    private final InjectedValue<NamingStore> sharedCompNamingStore;
+    private final InjectedValue<NamingStore> sharedModuleNamingStore;
+    private final InjectedValue<NamingStore> sharedAppNamingStore;
     private final InjectedValue<NamingStore> globalNamingStore;
     private final InjectedValue<NamingStore> jbossNamingStore;
     private final InjectedValue<NamingStore> remoteExposedNamingStore;
 
     public DefaultNamespaceContextSelectorService() {
+        this.sharedCompNamingStore = new InjectedValue<>();
+        this.sharedModuleNamingStore = new InjectedValue<>();
+        this.sharedAppNamingStore = new InjectedValue<>();
         this.globalNamingStore = new InjectedValue<>();
         this.jbossNamingStore = new InjectedValue<>();
         this.remoteExposedNamingStore = new InjectedValue<>();
+    }
+
+    public InjectedValue<NamingStore> getSharedCompNamingStore() {
+        return sharedCompNamingStore;
+    }
+
+    public InjectedValue<NamingStore> getSharedModuleNamingStore() {
+        return sharedModuleNamingStore;
+    }
+
+    public InjectedValue<NamingStore> getSharedAppNamingStore() {
+        return sharedAppNamingStore;
     }
 
     public InjectedValue<NamingStore> getGlobalNamingStore() {
@@ -50,7 +68,11 @@ public class DefaultNamespaceContextSelectorService implements Service<Void> {
         NamespaceContextSelector.setDefault(new NamespaceContextSelector() {
             public Context getContext(String identifier) {
                 final NamingStore namingStore;
-                if (identifier.equals("global")) {
+                if (identifier.equals("comp")) {
+                    namingStore = sharedCompNamingStore.getValue();
+                } else if (identifier.equals("module")) {
+                    namingStore = sharedModuleNamingStore.getValue();
+                } else if (identifier.equals("global")) {
                     namingStore = globalNamingStore.getValue();
                 } else if (identifier.equals("jboss")) {
                     namingStore = jbossNamingStore.getValue();

@@ -22,6 +22,7 @@
 
 package org.jboss.as.ee.component;
 
+import org.jboss.as.naming.ImmediateManagedReferenceFactory;
 import org.jboss.as.naming.ManagedReferenceFactory;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.msc.inject.Injector;
@@ -44,6 +45,15 @@ public final class FixedInjectionSource extends InjectionSource {
      */
     public FixedInjectionSource(final ManagedReferenceFactory factory, final Object value) {
         managedReferenceFactory = factory;
+        this.value = value;
+    }
+
+    /**
+     *
+     * @param value
+     */
+    public FixedInjectionSource(final Object value) {
+        managedReferenceFactory = new ImmediateManagedReferenceFactory(value);
         this.value = value;
     }
 

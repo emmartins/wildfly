@@ -246,7 +246,7 @@ public class ViewDescription {
         public void configure(final DeploymentPhaseContext context, final ComponentConfiguration componentConfiguration, final ViewDescription description, final ViewConfiguration configuration) throws DeploymentUnitProcessingException {
 
             // Create view bindings
-            final List<BindingConfiguration> bindingConfigurations = configuration.getBindingConfigurations();
+            final List<BindingConfiguration> bindingConfigurations = description.componentDescription.getBindingConfigurations();
             for (String bindingName : description.getBindingNames()) {
                 bindingConfigurations.add(new BindingConfiguration(bindingName, description.createInjectionSource(description.getServiceName(), Values.immediateValue(componentConfiguration.getModuleClassLoader()))));
             }

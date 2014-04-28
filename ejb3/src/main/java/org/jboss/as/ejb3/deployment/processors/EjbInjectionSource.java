@@ -179,15 +179,15 @@ public class EjbInjectionSource extends InjectionSource {
         if (this == o) { return true; }
 
         if (!(o instanceof EjbInjectionSource)) { return false; }
+        final EjbInjectionSource other = (EjbInjectionSource) o;
 
         resolve();
-
-        if (error != null) {
+        other.resolve();
+        if (this.error != null || other.error != null) {
             //we can't do a real equals comparison in this case, so just return false
             return false;
         }
 
-        final EjbInjectionSource other = (EjbInjectionSource) o;
         return eq(typeName, other.typeName) && eq(resolvedViewName, other.resolvedViewName);
     }
 

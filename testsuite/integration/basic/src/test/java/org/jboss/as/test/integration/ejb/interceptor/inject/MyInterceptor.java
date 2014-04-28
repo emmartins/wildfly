@@ -68,7 +68,7 @@ public class MyInterceptor extends MyBaseInterceptor
    {
       this.tmMethod = tmMethod;
    }
-   @Resource(name="DefaultDS", mappedName="java:DefaultDS")
+   @Resource(name="DefaultDSMethod")
    public void setDsMethod(DataSource dsMethod)
    {
       this.dsMethod = dsMethod;

@@ -22,55 +22,39 @@
 
 package org.jboss.as.ee.component.deployers;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
-import org.jboss.as.ee.logging.EeLogger;
-import org.jboss.as.ee.component.Attachments;
+import org.jboss.as.controller.ServiceVerificationHandler;
 import org.jboss.as.ee.component.BasicComponent;
 import org.jboss.as.ee.component.BasicComponentCreateService;
-import org.jboss.as.ee.component.BindingConfiguration;
-import org.jboss.as.ee.component.ClassDescriptionTraversal;
 import org.jboss.as.ee.component.Component;
 import org.jboss.as.ee.component.ComponentConfiguration;
-import org.jboss.as.ee.component.ComponentNamingMode;
 import org.jboss.as.ee.component.ComponentRegistry;
 import org.jboss.as.ee.component.ComponentStartService;
 import org.jboss.as.ee.component.ComponentView;
 import org.jboss.as.ee.component.DependencyConfigurator;
-import org.jboss.as.ee.component.EEApplicationClasses;
-import org.jboss.as.ee.component.EEModuleClassDescription;
 import org.jboss.as.ee.component.EEModuleConfiguration;
 import org.jboss.as.ee.component.InjectionSource;
-import org.jboss.as.ee.component.InterceptorDescription;
 import org.jboss.as.ee.component.ViewConfiguration;
 import org.jboss.as.ee.component.ViewService;
-import org.jboss.as.ee.metadata.MetadataCompleteMarker;
-import org.jboss.as.naming.ManagedReferenceFactory;
-import org.jboss.as.naming.ServiceBasedNamingStore;
-import org.jboss.as.naming.deployment.ContextNames;
+import org.jboss.as.ee.logging.EeLogger;
+import org.jboss.as.ee.naming.ComponentBinder;
 import org.jboss.as.naming.deployment.JndiNamingDependencyProcessor;
-import org.jboss.as.naming.service.BinderService;
-import org.jboss.as.naming.service.NamingStoreService;
-import org.jboss.as.server.CurrentServiceContainer;
 import org.jboss.as.server.Services;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.modules.Module;
-import org.jboss.msc.service.CircularDependencyException;
-import org.jboss.msc.service.DuplicateServiceException;
 import org.jboss.msc.service.Service;
 import org.jboss.msc.service.ServiceBuilder;
-import org.jboss.msc.service.ServiceController;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
 
-import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.jboss.as.ee.component.Attachments.COMPONENT_REGISTRY;
 import static org.jboss.as.ee.component.Attachments.EE_MODULE_CONFIGURATION;
+import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
 import static org.jboss.as.server.deployment.Attachments.MODULE;
 
 /**
@@ -117,14 +101,6 @@ public final class ComponentInstallProcessor implements DeploymentUnitProcessor 
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
 
-        final String applicationName = configuration.getApplicationName();
-        final String moduleName = configuration.getModuleName();
-        final String componentName = configuration.getComponentName();
-        final EEApplicationClasses applicationClasses = deploymentUnit.getAttachment(Attachments.EE_APPLICATION_CLASSES_DESCRIPTION);
-        final Module module = deploymentUnit.getAttachment(org.jboss.as.server.deployment.Attachments.MODULE);
-
-        //create additional injectors
-
         final ServiceName createServiceName = configuration.getComponentDescription().getCreateServiceName();
         final ServiceName startServiceName = configuration.getComponentDescription().getStartServiceName();
         final BasicComponentCreateService createService = configuration.getComponentCreateServiceFactory().constructService(configuration);
@@ -136,12 +112,6 @@ public final class ComponentInstallProcessor implements DeploymentUnitProcessor 
         final ServiceBuilder<Component> startBuilder = serviceTarget.addService(startServiceName, startService);
 
         deploymentUnit.addToAttachmentList(org.jboss.as.server.deployment.Attachments.DEPLOYMENT_COMPLETE_SERVICES, startServiceName);
-
-        //WFLY-1402 we don't add the bindings to the jndi dependencies list directly, instead
-        //the bindings depend on the this artificial service
-        ServiceName jndiDepServiceName = configuration.getComponentDescription().getServiceName().append(JNDI_BINDINGS_SERVICE);
-        final ServiceBuilder<Void> jndiDepServiceBuilder = serviceTarget.addService(jndiDepServiceName, Service.NULL);
-        jndiDependencies.add(jndiDepServiceName);
 
         // Add all service dependencies
         for (DependencyConfigurator configurator : configuration.getCreateDependencies()) {
@@ -157,19 +127,6 @@ public final class ComponentInstallProcessor implements DeploymentUnitProcessor 
 
         //don't start components until all bindings are up
         startBuilder.addDependency(bindingDependencyService);
-        final ServiceName contextServiceName;
-        //set up the naming context if necessary
-        if (configuration.getComponentDescription().getNamingMode() == ComponentNamingMode.CREATE) {
-            final NamingStoreService contextService = new NamingStoreService(true);
-            serviceTarget.addService(configuration.getComponentDescription().getContextServiceName(), contextService).install();
-        }
-
-        final InjectionSource.ResolutionContext resolutionContext = new InjectionSource.ResolutionContext(
-                configuration.getComponentDescription().getNamingMode() == ComponentNamingMode.USE_MODULE,
-                configuration.getComponentName(),
-                configuration.getModuleName(),
-                configuration.getApplicationName()
-        );
 
         // Iterate through each view, creating the services for each
         for (ViewConfiguration viewConfiguration : configuration.getViews()) {
@@ -183,99 +140,32 @@ public final class ComponentInstallProcessor implements DeploymentUnitProcessor 
             }
             componentViewServiceBuilder.install();
             startBuilder.addDependency(serviceName);
-            // The bindings for the view
-            for (BindingConfiguration bindingConfiguration : viewConfiguration.getBindingConfigurations()) {
-                final String bindingName = bindingConfiguration.getName();
-                final ContextNames.BindInfo bindInfo = ContextNames.bindInfoFor(applicationName, moduleName, componentName, bindingName);
-                final BinderService service = new BinderService(bindInfo.getBindName(), bindingConfiguration.getSource());
-
-                //these bindings should never be merged, if a view binding is duplicated it is an error
-                jndiDepServiceBuilder.addDependency(bindInfo.getBinderServiceName());
-
-                ServiceBuilder<ManagedReferenceFactory> serviceBuilder = serviceTarget.addService(bindInfo.getBinderServiceName(), service);
-                bindingConfiguration.getSource().getResourceValue(resolutionContext, serviceBuilder, phaseContext, service.getManagedObjectInjector());
-                serviceBuilder.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, service.getNamingStoreInjector());
-                serviceBuilder.install();
-            }
         }
 
-        if (configuration.getComponentDescription().getNamingMode() == ComponentNamingMode.CREATE) {
-            // The bindings for the component
-            final Set<ServiceName> bound = new HashSet<ServiceName>();
-            processBindings(phaseContext, configuration, serviceTarget, resolutionContext, configuration.getComponentDescription().getBindingConfigurations(), jndiDepServiceBuilder, bound);
-
-            //class level bindings should be ignored if the deployment is metadata complete
-            if (!MetadataCompleteMarker.isMetadataComplete(phaseContext.getDeploymentUnit())) {
-
-                // The bindings for the component class
-                new ClassDescriptionTraversal(configuration.getComponentClass(), applicationClasses) {
-                    @Override
-                    protected void handle(final Class<?> clazz, final EEModuleClassDescription classDescription) throws DeploymentUnitProcessingException {
-                        if (classDescription != null) {
-                            processBindings(phaseContext, configuration, serviceTarget, resolutionContext, classDescription.getBindingConfigurations(), jndiDepServiceBuilder, bound);
-                        }
-                    }
-                }.run();
-
-
-                for (InterceptorDescription interceptor : configuration.getComponentDescription().getAllInterceptors()) {
-                    final Class<?> interceptorClass;
-                    try {
-                        interceptorClass = module.getClassLoader().loadClass(interceptor.getInterceptorClassName());
-                    } catch (ClassNotFoundException e) {
-                        throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptor.getInterceptorClassName(), configuration.getComponentClass());
-                    }
-                    if (interceptorClass != null) {
-                        new ClassDescriptionTraversal(interceptorClass, applicationClasses) {
-                            @Override
-                            protected void handle(final Class<?> clazz, final EEModuleClassDescription classDescription) throws DeploymentUnitProcessingException {
-                                if (classDescription != null) {
-                                    processBindings(phaseContext, configuration, serviceTarget, resolutionContext, classDescription.getBindingConfigurations(), jndiDepServiceBuilder, bound);
-                                }
-                            }
-                        }.run();
-                    }
-                }
-            }
+        final ComponentBinder componentBinder = configuration.getBinder();
+        if (componentBinder != null) {
+            // the component has its own java:comp context
+            // do the bindings
+            final InjectionSource.ResolutionContext resolutionContext = new InjectionSource.ResolutionContext(
+                    false,
+                    configuration.getComponentName(),
+                    configuration.getModuleName(),
+                    configuration.getApplicationName()
+            );
+            final ServiceVerificationHandler serviceVerificationHandler = phaseContext.getDeploymentUnit().getAttachment(org.jboss.as.server.deployment.Attachments.SERVICE_VERIFICATION_HANDLER);
+            final List<ServiceName> servicesBound = new ArrayList<>();
+            componentBinder.doBindings(phaseContext, servicesBound, resolutionContext, serviceVerificationHandler);
+            //WFLY-1402 we don't add the bindings to the jndi dependencies list directly, instead
+            //the bindings depend on the this artificial service
+            ServiceName jndiDepServiceName = configuration.getComponentDescription().getServiceName().append(JNDI_BINDINGS_SERVICE);
+            final ServiceBuilder<Void> jndiDepServiceBuilder = serviceTarget.addService(jndiDepServiceName, Service.NULL);
+            jndiDependencies.add(jndiDepServiceName);
+            jndiDepServiceBuilder.addDependencies(servicesBound);
+            jndiDepServiceBuilder.install();
         }
 
         createBuilder.install();
         startBuilder.install();
-        jndiDepServiceBuilder.install();
-    }
-
-    @SuppressWarnings("unchecked")
-    private void processBindings(DeploymentPhaseContext phaseContext, ComponentConfiguration configuration, ServiceTarget serviceTarget, InjectionSource.ResolutionContext resolutionContext, List<BindingConfiguration> bindings, final ServiceBuilder<?> jndiDepServiceBuilder, final Set<ServiceName> bound) throws DeploymentUnitProcessingException {
-
-        //we only handle java:comp bindings for components that have their own namespace here, the rest are processed by ModuleJndiBindingProcessor
-        for (BindingConfiguration bindingConfiguration : bindings) {
-            if (bindingConfiguration.getName().startsWith("java:comp") || !bindingConfiguration.getName().startsWith("java:")) {
-                final String bindingName = bindingConfiguration.getName().startsWith("java:comp") ? bindingConfiguration.getName() : "java:comp/env/" + bindingConfiguration.getName();
-                final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(configuration.getApplicationName(), configuration.getModuleName(), configuration.getComponentName(), configuration.getComponentDescription().getNamingMode() == ComponentNamingMode.CREATE, bindingName);
-                if (bound.contains(bindInfo.getBinderServiceName())) {
-                    continue;
-                }
-                bound.add(bindInfo.getBinderServiceName());
-                try {
-                    final BinderService service = new BinderService(bindInfo.getBindName(), bindingConfiguration.getSource());
-                    jndiDepServiceBuilder.addDependency(bindInfo.getBinderServiceName());
-                    ServiceBuilder<ManagedReferenceFactory> serviceBuilder = serviceTarget.addService(bindInfo.getBinderServiceName(), service);
-                    bindingConfiguration.getSource().getResourceValue(resolutionContext, serviceBuilder, phaseContext, service.getManagedObjectInjector());
-                    serviceBuilder.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, service.getNamingStoreInjector());
-                    serviceBuilder.install();
-                } catch (DuplicateServiceException e) {
-                    ServiceController<ManagedReferenceFactory> registered = (ServiceController<ManagedReferenceFactory>) CurrentServiceContainer.getServiceContainer().getService(bindInfo.getBinderServiceName());
-                    if (registered == null)
-                        throw e;
-
-                    BinderService service = (BinderService) registered.getService();
-                    if (!service.getSource().equals(bindingConfiguration.getSource()))
-                        throw EeLogger.ROOT_LOGGER.conflictingBinding(bindingName, bindingConfiguration.getSource());
-                } catch (CircularDependencyException e) {
-                    throw EeLogger.ROOT_LOGGER.circularDependency(bindingName);
-                }
-            }
-        }
     }
 
     public void undeploy(final DeploymentUnit context) {

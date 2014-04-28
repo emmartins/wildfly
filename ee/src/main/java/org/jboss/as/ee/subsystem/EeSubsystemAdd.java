@@ -22,8 +22,6 @@
 
 package org.jboss.as.ee.subsystem;
 
-import java.util.List;
-
 import org.jboss.as.controller.AbstractBoottimeAddStepHandler;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
@@ -46,9 +44,6 @@ import org.jboss.as.ee.component.deployers.EEModuleInitialProcessor;
 import org.jboss.as.ee.component.deployers.EEModuleNameProcessor;
 import org.jboss.as.ee.component.deployers.EarApplicationNameProcessor;
 import org.jboss.as.ee.component.deployers.EarMessageDestinationProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentContextProcessor;
-import org.jboss.as.ee.naming.InApplicationClientBindingProcessor;
 import org.jboss.as.ee.component.deployers.InterceptorAnnotationProcessor;
 import org.jboss.as.ee.component.deployers.LifecycleAnnotationParsingProcessor;
 import org.jboss.as.ee.component.deployers.MessageDestinationResolutionProcessor;
@@ -56,9 +51,7 @@ import org.jboss.as.ee.component.deployers.ModuleJndiBindingProcessor;
 import org.jboss.as.ee.component.deployers.ResourceInjectionAnnotationParsingProcessor;
 import org.jboss.as.ee.component.deployers.ResourceReferenceProcessor;
 import org.jboss.as.ee.component.deployers.ResourceReferenceRegistrySetupProcessor;
-import org.jboss.as.ee.naming.InstanceNameBindingProcessor;
-import org.jboss.as.ee.structure.AppJBossAllParser;
-import org.jboss.as.ee.structure.DescriptorPropertyReplacementProcessor;
+import org.jboss.as.ee.concurrent.deployers.EEConcurrentContextProcessor;
 import org.jboss.as.ee.managedbean.processors.JavaEEDependencyProcessor;
 import org.jboss.as.ee.managedbean.processors.ManagedBeanAnnotationProcessor;
 import org.jboss.as.ee.managedbean.processors.ManagedBeanSubDeploymentMarkingProcessor;
@@ -68,10 +61,14 @@ import org.jboss.as.ee.metadata.property.PropertyResolverProcessor;
 import org.jboss.as.ee.metadata.property.SystemPropertyResolverProcessor;
 import org.jboss.as.ee.metadata.property.VaultPropertyResolverProcessor;
 import org.jboss.as.ee.naming.ApplicationContextProcessor;
+import org.jboss.as.ee.naming.ComponentContextProcessor;
 import org.jboss.as.ee.naming.ModuleContextProcessor;
+import org.jboss.as.ee.naming.SharedContextBindings;
 import org.jboss.as.ee.structure.AnnotationPropertyReplacementProcessor;
+import org.jboss.as.ee.structure.AppJBossAllParser;
 import org.jboss.as.ee.structure.ApplicationClientDeploymentProcessor;
 import org.jboss.as.ee.structure.ComponentAggregationProcessor;
+import org.jboss.as.ee.structure.DescriptorPropertyReplacementProcessor;
 import org.jboss.as.ee.structure.EJBClientDescriptorParsingProcessor;
 import org.jboss.as.ee.structure.EarDependencyProcessor;
 import org.jboss.as.ee.structure.EarInitializationProcessor;
@@ -80,14 +77,24 @@ import org.jboss.as.ee.structure.EarStructureProcessor;
 import org.jboss.as.ee.structure.EjbJarDeploymentProcessor;
 import org.jboss.as.ee.structure.GlobalModuleDependencyProcessor;
 import org.jboss.as.ee.structure.InitializeInOrderProcessor;
+import org.jboss.as.naming.ValueManagedReferenceFactory;
+import org.jboss.as.naming.deployment.ContextNames;
 import org.jboss.as.naming.management.JndiViewExtensionRegistry;
 import org.jboss.as.server.AbstractDeploymentChainStep;
 import org.jboss.as.server.DeploymentProcessorTarget;
+import org.jboss.as.server.ServerEnvironment;
+import org.jboss.as.server.ServerEnvironmentService;
 import org.jboss.as.server.deployment.Phase;
 import org.jboss.as.server.deployment.jbossallxml.JBossAllXmlParserRegisteringProcessor;
 import org.jboss.dmr.ModelNode;
 import org.jboss.metadata.ear.jboss.JBossAppMetaData;
+import org.jboss.msc.inject.InjectionException;
+import org.jboss.msc.inject.Injector;
 import org.jboss.msc.service.ServiceController;
+import org.jboss.msc.value.ImmediateValue;
+import org.jboss.msc.value.InjectedValue;
+
+import java.util.List;
 
 import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
 
@@ -193,15 +200,14 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_INJECTION_ANNOTATION, new ResourceInjectionAnnotationParsingProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_ENV_ENTRY, new ResourceReferenceProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_INTERCEPTOR_ANNOTATIONS, new InterceptorAnnotationProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_NAMING_CONTEXT, new ModuleContextProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_IN_APP_CLIENT, new InApplicationClientBindingProcessor(appclient));
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_INSTANCE_NAME, new InstanceNameBindingProcessor());
+                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_SHARED_CONTEXTS, new SharedContextBindings.Processor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_APP_NAMING_CONTEXT, new ApplicationContextProcessor());
+                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_MODULE_NAMING_CONTEXT, new ModuleContextProcessor());
+                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_COMP_NAMING_CONTEXT, new ComponentContextProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.POST_MODULE, Phase.POST_MODULE_EE_CONCURRENT_CONTEXT, new EEConcurrentContextProcessor());
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_RESOLVE_MESSAGE_DESTINATIONS, new MessageDestinationResolutionProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_COMPONENT_AGGREGATION, new ComponentAggregationProcessor());
-                processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_DEFAULT_BINDINGS_EE_CONCURRENCY, new EEConcurrentDefaultBindingProcessor());
 
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_MODULE_JNDI_BINDINGS, new ModuleJndiBindingProcessor());
                 processorTarget.addDeploymentProcessor(EeExtension.SUBSYSTEM_NAME, Phase.INSTALL, Phase.INSTALL_EE_MODULE_CONFIG, new EEModuleConfigurationProcessor());
@@ -213,6 +219,30 @@ public class EeSubsystemAdd extends AbstractBoottimeAddStepHandler {
         }, OperationContext.Stage.RUNTIME);
 
         newControllers.add(context.getServiceTarget().addService(ReflectiveClassIntrospector.SERVICE_NAME, new ReflectiveClassIntrospector()).addListener(verificationHandler).install());
+
+        // bind java:comp/InAppClientContainer
+        newControllers.add(ContextNames.bindInfoFor("java:comp/InAppClientContainer")
+                .builder(context.getServiceTarget(), verificationHandler)
+                .installService(appclient));
+        // bind java:comp/InstanceName
+        final InjectedValue<String> nodeNameValue = new InjectedValue<>();
+        final ValueManagedReferenceFactory valueManagedReferenceFactory = new ValueManagedReferenceFactory(nodeNameValue);
+        final Injector<ServerEnvironment> injector = new Injector<ServerEnvironment>() {
+            @Override
+            public void inject(final ServerEnvironment serverEnvironment) throws InjectionException {
+                final String nodeName = serverEnvironment.getNodeName() != null ? serverEnvironment.getNodeName() : "";
+                nodeNameValue.setValue(new ImmediateValue<>(nodeName));
+            }
+
+            @Override
+            public void uninject() {
+            }
+        };
+        newControllers.add(ContextNames.bindInfoFor("java:comp/InstanceName")
+                .builder(context.getServiceTarget(), verificationHandler)
+                .addService(valueManagedReferenceFactory, ServerEnvironmentService.SERVICE_NAME)
+                .addDependency(ServerEnvironmentService.SERVICE_NAME, ServerEnvironment.class, injector)
+                .install());
 
     }
 

@@ -607,5 +607,4 @@ public class ComponentDescription implements ResourceInjectionTarget {
         }
         return interceptorConfig;
     }
-
 }

@@ -183,7 +183,7 @@ public class WeldEjbInjectionServices extends AbstractResourceInjectionServices 
 
     @Override
     protected BindInfo getBindInfo(String result) {
-        return ContextNames.bindInfoFor(moduleDescription.getApplicationName(), moduleDescription.getModuleName(), moduleDescription.getModuleName(), result);
+        return ContextNames.bindInfoFor(moduleDescription.getApplicationName(), moduleDescription.getModuleName(), result);
     }
 
     @Override

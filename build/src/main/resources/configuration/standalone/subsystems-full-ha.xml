@@ -6,7 +6,7 @@
         <subsystem>configuration/subsystems/batch.xml</subsystem>
         <subsystem>configuration/subsystems/datasources.xml</subsystem>
         <subsystem>configuration/subsystems/deployment-scanner.xml</subsystem>
-        <subsystem>configuration/subsystems/ee.xml</subsystem>
+        <subsystem supplement="full">configuration/subsystems/ee.xml</subsystem>
         <subsystem supplement="full-ha">configuration/subsystems/ejb3.xml</subsystem>
         <subsystem>configuration/subsystems/io.xml</subsystem>
         <subsystem supplement="ha">configuration/subsystems/infinispan.xml</subsystem>

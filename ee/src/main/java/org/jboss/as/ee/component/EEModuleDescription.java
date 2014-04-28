@@ -48,6 +48,7 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     private final Map<String, List<ComponentDescription>> componentsByClassName = new HashMap<String, List<ComponentDescription>>();
     private final Map<String, EEModuleClassDescription> classDescriptions = new HashMap<String, EEModuleClassDescription>();
     private final Map<String, InterceptorClassDescription> interceptorClassOverrides = new HashMap<String, InterceptorClassDescription>();
+    private final boolean compUsesModuleNamespace;
 
     /**
      * Additional interceptor environment that was defined in the deployment descriptor <interceptors/> element.
@@ -62,7 +63,10 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     private InjectedEENamespaceContextSelector namespaceContextSelector;
 
     // Module Bindings
-    private final List<BindingConfiguration> bindingConfigurations = new ArrayList<BindingConfiguration>();
+    private final List<BindingConfiguration> moduleBindingConfigurations = new ArrayList<>();
+    // Shared Comp Bindings
+    private final List<BindingConfiguration> sharedCompBindingConfigurations = new ArrayList<>();
+
     //injections that have been set in the components deployment descriptor
     private final Map<String, Map<InjectionTarget, ResourceInjectionConfiguration>> resourceInjections = new HashMap<String, Map<InjectionTarget, ResourceInjectionConfiguration>>();
 
@@ -76,16 +80,17 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
 
     /**
      * Construct a new instance.
-     *
-     * @param applicationName    the application name (which is same as the module name if the .ear is absent)
+     *  @param applicationName    the application name (which is same as the module name if the .ear is absent)
      * @param moduleName         the module name
      * @param earApplicationName The application name (which is null if the .ear is absent)
+     * @param compUsesModuleNamespace
      * @param appClient          indicates if the process type is an app client
      */
-    public EEModuleDescription(final String applicationName, final String moduleName, final String earApplicationName, final boolean appClient) {
+    public EEModuleDescription(final String applicationName, final String moduleName, final String earApplicationName, boolean compUsesModuleNamespace, final boolean appClient) {
         this.applicationName = applicationName;
         this.moduleName = moduleName;
         this.earApplicationName = earApplicationName;
+        this.compUsesModuleNamespace = compUsesModuleNamespace;
         this.appClient = appClient;
         this.concurrentContext = new ConcurrentContext();
         this.defaultResourceJndiNames = new EEDefaultResourceJndiNames();
@@ -269,8 +274,12 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
         interceptorClassOverrides.put(className, InterceptorClassDescription.merge(interceptorClassOverrides.get(className), override));
     }
 
-    public List<BindingConfiguration> getBindingConfigurations() {
-        return bindingConfigurations;
+    public List<BindingConfiguration> getModuleBindingConfigurations() {
+        return moduleBindingConfigurations;
+    }
+
+    public List<BindingConfiguration> getSharedCompBindingConfigurations() {
+        return sharedCompBindingConfigurations;
     }
 
     public void addResourceInjection(final ResourceInjectionConfiguration injection) {
@@ -314,4 +323,9 @@ public final class EEModuleDescription implements ResourceInjectionTarget {
     public EEDefaultResourceJndiNames getDefaultResourceJndiNames() {
         return defaultResourceJndiNames;
     }
+
+    public boolean isCompUsesModuleNamespace() {
+        return compUsesModuleNamespace;
+    }
+
 }
