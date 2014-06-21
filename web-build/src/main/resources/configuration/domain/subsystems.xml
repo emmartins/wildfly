@@ -5,7 +5,9 @@
         <subsystem>logging.xml</subsystem>
         <subsystem supplement="web-build">ee.xml</subsystem>
         <subsystem>io.xml</subsystem>
+        <subsystem>jmx.xml</subsystem>
         <subsystem supplement="web-build">naming.xml</subsystem>
+        <subsystem supplement="standalone">security.xml</subsystem>
         <subsystem>undertow.xml</subsystem>
     </subsystems>
 </config>
