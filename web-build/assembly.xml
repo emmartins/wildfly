@@ -34,40 +34,37 @@
 
     <fileSets>
         <fileSet>
-            <directory>target</directory>
+            <directory>target/${server.output.dir.prefix}-web-${project.version}</directory>
             <outputDirectory/>
-            <includes>
-                <include>${server.output.dir.prefix}-web-${project.version}/**</include>
-            </includes>
             <excludes>
                 <exclude>**/*.sh</exclude>
-                <exclude>${server.output.dir.prefix}-web-${project.version}/domain/tmp/auth</exclude>
-                <exclude>${server.output.dir.prefix}-web-${project.version}/standalone/tmp/auth</exclude>
+                <exclude>content/domain/tmp/auth</exclude>
+                <exclude>content/standalone/tmp/auth</exclude>
                 <exclude>**/*-users.properties</exclude>
             </excludes>
         </fileSet>
         <fileSet>
-            <directory>target</directory>
+            <directory>target/${server.output.dir.prefix}-web-${project.version}</directory>
             <outputDirectory/>
             <includes>
-                <include>${server.output.dir.prefix}-web-${project.version}/**/*.sh</include>
+                <include>**/*.sh</include>
             </includes>
             <fileMode>0755</fileMode>
         </fileSet>
          <fileSet>
-            <directory>target</directory>
+            <directory>target/${server.output.dir.prefix}-web-${project.version}</directory>
             <outputDirectory/>
             <includes>
-                <include>${server.output.dir.prefix}-web-${project.version}/**/*-users.properties</include>
+                <include>**/*-users.properties</include>
             </includes>
             <fileMode>0600</fileMode>
         </fileSet>
         <fileSet>
-            <directory>target</directory>
+            <directory>target/${server.output.dir.prefix}-web-${project.version}</directory>
             <outputDirectory/>
             <includes>
-                <include>${server.output.dir.prefix}-web-${project.version}/domain/tmp/auth</include>
-                <include>${server.output.dir.prefix}-web-${project.version}/standalone/tmp/auth</include>
+                <include>content/domain/tmp/auth</include>
+                <include>content/standalone/tmp/auth</include>
             </includes>
             <directoryMode>0700</directoryMode>
         </fileSet>
