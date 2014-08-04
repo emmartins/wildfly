@@ -651,7 +651,7 @@
             </plugin>
             <plugin>
                 <groupId>org.wildfly.build</groupId>
-                <artifactId>wildfly-build-maven-plugin</artifactId>
+                <artifactId>wildfly-feature-pack-build-maven-plugin</artifactId>
                 <version>1.0.0.Alpha1-SNAPSHOT</version>
                 <executions>
                     <execution>
