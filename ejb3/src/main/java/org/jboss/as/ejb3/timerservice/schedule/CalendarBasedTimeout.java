@@ -160,10 +160,7 @@ public class CalendarBasedTimeout {
     }
 
     public Calendar getNextTimeout() {
-        Calendar now = new GregorianCalendar(this.timezone);
-        now.setTime(new Date());
-
-        return this.getNextTimeout(now);
+        return this.getNextTimeout(new GregorianCalendar(this.timezone));
     }
 
     /**
@@ -173,20 +170,18 @@ public class CalendarBasedTimeout {
         return this.firstTimeout;
     }
 
-
     private void setFirstTimeout() {
         this.firstTimeout = new GregorianCalendar(this.timezone);
+        this.firstTimeout.setFirstDayOfWeek(Calendar.SUNDAY);
         Date start = this.scheduleExpression.getStart();
         if (start != null) {
             this.firstTimeout.setTime(start);
         } else {
-            this.firstTimeout.set(Calendar.SECOND, this.second.getFirst());
-            this.firstTimeout.set(Calendar.MINUTE, this.minute.getFirst());
-            this.firstTimeout.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
-            this.firstTimeout.set(Calendar.MILLISECOND, 0);
+            resetCalendarHours(this.firstTimeout);
+            resetCalendarMinutes(this.firstTimeout);
+            resetCalendarSeconds(this.firstTimeout);
+            resetCalendarMilliseconds(this.firstTimeout);
         }
-        this.firstTimeout.setFirstDayOfWeek(Calendar.SUNDAY);
-
         this.firstTimeout = this.computeNextSecond(this.firstTimeout);
         if (this.firstTimeout == null) {
             return;
@@ -235,8 +230,7 @@ public class CalendarBasedTimeout {
         if (this.noMoreTimeouts(currentCal)) {
             return null;
         }
-        Calendar nextCal = this.copy(currentCal);
-
+        Calendar nextCal = (Calendar) currentCal.clone();
         nextCal.setTimeZone(this.timezone);
         Date start = this.scheduleExpression.getStart();
         if (start != null && currentCal.getTime().before(start)) {
@@ -244,9 +238,8 @@ public class CalendarBasedTimeout {
         } else {
             // increment the current second by 1
             nextCal.add(Calendar.SECOND, 1);
-            nextCal.set(Calendar.MILLISECOND, 0);
+            resetCalendarMilliseconds(nextCal);
         }
-        nextCal.setFirstDayOfWeek(Calendar.SUNDAY);
 
         nextCal = this.computeNextSecond(nextCal);
         if (nextCal == null) {
@@ -302,7 +295,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.MINUTE);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // At this point, a suitable "next" second has been identified.
         // There can be 2 cases
         // 1) The "next" second is greater than the current second : This
@@ -313,13 +306,13 @@ public class CalendarBasedTimeout {
 
         // handle case#1
         if (nextSecond > currentSecond) {
-            nextCal.set(Calendar.SECOND, nextSecond);
+            setCalendarSeconds(nextCal, nextSecond);
             return nextCal;
         }
 
         // case#2
         if (nextSecond < currentSecond) {
-            nextCal.set(Calendar.SECOND, nextSecond);
+            setCalendarSeconds(nextCal, nextSecond);
             // advance the minute to next minute
             nextCal.add(Calendar.MINUTE, 1);
             return nextCal;
@@ -345,7 +338,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.HOUR_OF_DAY);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // At this point, a suitable "next" minute has been identified.
         // There can be 2 cases
         // 1) The "next" minute is greater than the current minute : This
@@ -357,11 +350,10 @@ public class CalendarBasedTimeout {
         // handle case#1
         if (nextMinute > currentMinute) {
             // set the chosen minute
-            nextCal.set(Calendar.MINUTE, nextMinute);
+            setCalendarMinutes(nextCal, nextMinute);
             // since we are moving to a different minute (as compared to the current minute),
             // we should reset the second, to its first possible value
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-
+            resetCalendarSeconds(nextCal);
             return nextCal;
         }
 
@@ -369,12 +361,11 @@ public class CalendarBasedTimeout {
         if (nextMinute < currentMinute) {
             // since we are advancing the hour, we should
             // restart from the first eligible second
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
+            resetCalendarSeconds(nextCal);
             // set the chosen minute
-            nextCal.set(Calendar.MINUTE, nextMinute);
+            setCalendarMinutes(nextCal, nextMinute);
             // advance the hour to next hour
             nextCal.add(Calendar.HOUR_OF_DAY, 1);
-
             return nextCal;
         }
 
@@ -398,7 +389,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.DATE);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // At this point, a suitable "next" hour has been identified.
         // There can be 2 cases
         // 1) The "next" hour is greater than the current hour : This
@@ -410,12 +401,12 @@ public class CalendarBasedTimeout {
         // handle case#1
         if (nextHour > currentHour) {
             // set the chosen day of hour
-            nextCal.set(Calendar.HOUR_OF_DAY, nextHour);
+            setCalendarHours(nextCal, nextHour);
             // since we are moving to a different hour (as compared to the current hour),
             // we should reset the second and minute appropriately, to their first possible
             // values
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-            nextCal.set(Calendar.MINUTE, this.minute.getFirst());
+            resetCalendarSeconds(nextCal);
+            resetCalendarMinutes(nextCal);
 
             return nextCal;
         }
@@ -423,14 +414,12 @@ public class CalendarBasedTimeout {
         // case#2
         if (nextHour < currentHour) {
             // set the chosen hour
-            nextCal.set(Calendar.HOUR_OF_DAY, nextHour);
-
+            setCalendarHours(nextCal, nextHour);
             // since we are moving to a different hour (as compared to the current hour),
             // we should reset the second and minute appropriately, to their first possible
             // values
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-            nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-
+            resetCalendarSeconds(nextCal);
+            resetCalendarMinutes(nextCal);
             // advance to next day
             nextCal.add(Calendar.DATE, 1);
 
@@ -458,7 +447,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.WEEK_OF_MONTH);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // At this point, a suitable "next" day-of-week has been identified.
         // There can be 2 cases
         // 1) The "next" day-of-week is greater than the current day-of-week : This
@@ -466,17 +455,18 @@ public class CalendarBasedTimeout {
         // 2) The "next" day-of-week is lesser than the current day-of-week : This implies
         // that the next day-of-week is in the next week (i.e. current week needs to
         // be advanced to next week).
-        nextCal.set(Calendar.DAY_OF_WEEK, nextDayOfWeek);
-        if (nextDayOfWeek < currentDayOfWeek) {
-            nextCal.add(Calendar.WEEK_OF_MONTH, 1);
-        }
 
         // since we are moving to a different day-of-week (as compared to the current day-of-week),
         // we should reset the second, minute and hour appropriately, to their first possible
         // values
-        nextCal.set(Calendar.SECOND, this.second.getFirst());
-        nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-        nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+        resetCalendarSeconds(nextCal);
+        resetCalendarMinutes(nextCal);
+        resetCalendarHours(nextCal);
+
+        nextCal.set(Calendar.DAY_OF_WEEK, nextDayOfWeek);
+        if (nextDayOfWeek < currentDayOfWeek) {
+            nextCal.add(Calendar.WEEK_OF_MONTH, 1);
+        }
 
         if (nextCal.get(Calendar.MONTH) != currentCal.get(Calendar.MONTH)) {
             nextCal = computeNextMonth(nextCal);
@@ -501,7 +491,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.YEAR);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // At this point, a suitable "next" month has been identified.
         // There can be 2 cases
         // 1) The "next" month is greater than the current month : This
@@ -515,12 +505,11 @@ public class CalendarBasedTimeout {
             // since we are moving to a different month (as compared to the current month),
             // we should reset the second, minute, hour, day-of-week and dayofmonth appropriately, to their first possible
             // values
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-            nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-            nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+            resetCalendarSeconds(nextCal);
+            resetCalendarMinutes(nextCal);
+            resetCalendarHours(nextCal);
             nextCal.set(Calendar.DAY_OF_WEEK, this.dayOfWeek.getFirst());
             nextCal.set(Calendar.DAY_OF_MONTH, 1);
-
             // set the chosen month
             nextCal.set(Calendar.MONTH, nextMonth);
             return nextCal;
@@ -528,20 +517,18 @@ public class CalendarBasedTimeout {
 
         // case#2
         if (nextMonth < currentMonth) {
-            // set the chosen month
-            nextCal.set(Calendar.MONTH, nextMonth);
             // since we are moving to a different month (as compared to the current month),
             // we should reset the second, minute, hour, day-of-week and dayofmonth appropriately, to their first possible
             // values
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-            nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-            nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+            resetCalendarSeconds(nextCal);
+            resetCalendarMinutes(nextCal);
+            resetCalendarHours(nextCal);
             nextCal.set(Calendar.DAY_OF_WEEK, this.dayOfWeek.getFirst());
             nextCal.set(Calendar.DAY_OF_MONTH, 1);
-
+            // set the chosen month
+            nextCal.set(Calendar.MONTH, nextMonth);
             // advance to next year
             nextCal.add(Calendar.YEAR, 1);
-
             return nextCal;
         }
 
@@ -593,7 +580,7 @@ public class CalendarBasedTimeout {
             return currentCal;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.MONTH);
+        Calendar nextCal = (Calendar) currentCal.clone();
 
         if (nextDayOfMonth > currentDayOfMonth) {
             if (this.monthHasDate(nextCal, nextDayOfMonth)) {
@@ -602,9 +589,9 @@ public class CalendarBasedTimeout {
                 // since we are moving to a different day-of-month (as compared to the current day-of-month),
                 // we should reset the second, minute and hour appropriately, to their first possible
                 // values
-                nextCal.set(Calendar.SECOND, this.second.getFirst());
-                nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-                nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+                resetCalendarSeconds(nextCal);
+                resetCalendarMinutes(nextCal);
+                resetCalendarHours(nextCal);
             } else {
                 nextCal = this.advanceTillMonthHasDate(nextCal, nextDayOfMonth);
             }
@@ -612,9 +599,9 @@ public class CalendarBasedTimeout {
             // since the next day is before the current day we need to shift to the next month
             nextCal.add(Calendar.MONTH, 1);
             // also we need to reset the time
-            nextCal.set(Calendar.SECOND, this.second.getFirst());
-            nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-            nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+            resetCalendarSeconds(nextCal);
+            resetCalendarMinutes(nextCal);
+            resetCalendarHours(nextCal);
             nextCal = this.computeNextMonth(nextCal);
             if (nextCal == null) {
                 return null;
@@ -653,7 +640,7 @@ public class CalendarBasedTimeout {
             return null;
         }
 
-        Calendar nextCal = this.truncate(currentCal, Calendar.ERA);
+        Calendar nextCal = (Calendar) currentCal.clone();
         // at this point we have chosen a year which is greater than the current
         // year.
         // set the chosen year
@@ -661,9 +648,9 @@ public class CalendarBasedTimeout {
         // since we are moving to a different year (as compared to the current year),
         // we should reset all other calendar attribute expressions appropriately, to their first possible
         // values
-        nextCal.set(Calendar.SECOND, this.second.getFirst());
-        nextCal.set(Calendar.MINUTE, this.minute.getFirst());
-        nextCal.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+        resetCalendarSeconds(nextCal);
+        resetCalendarMinutes(nextCal);
+        resetCalendarHours(nextCal);
         nextCal.set(Calendar.MONTH, this.month.getFirstMatch());
         nextCal.set(Calendar.DAY_OF_MONTH, 1);
 
@@ -676,10 +663,10 @@ public class CalendarBasedTimeout {
     }
 
     private Calendar advanceTillMonthHasDate(Calendar cal, Integer date) {
-        Calendar copy = this.truncate(cal, Calendar.MONTH);
-        copy.set(Calendar.SECOND, this.second.getFirst());
-        copy.set(Calendar.MINUTE, this.minute.getFirst());
-        copy.set(Calendar.HOUR_OF_DAY, this.hour.getFirst());
+        Calendar copy = (Calendar) cal.clone();
+        resetCalendarSeconds(copy);
+        resetCalendarMinutes(copy);
+        resetCalendarHours(copy);
 
         // make sure the month can handle the date
         while (monthHasDate(copy, date) == false) {
@@ -699,27 +686,6 @@ public class CalendarBasedTimeout {
             }
         }
         copy.set(Calendar.DAY_OF_MONTH, date);
-        return copy;
-    }
-
-    private Calendar copy(Calendar cal) {
-        Calendar copy = new GregorianCalendar(cal.getTimeZone());
-        copy.setTimeInMillis(cal.getTimeInMillis());
-
-        return copy;
-    }
-
-    private Calendar truncate(Calendar cal, int field) {
-        Calendar copy = new GregorianCalendar(cal.getTimeZone());
-        copy.clear();
-        for(int i=0; i <= field; i++) {
-            if(cal.isSet(i)) {
-                copy.set(i, cal.get(i));
-            }
-        }
-        // set that week starts on SUNDAY (as is done in #setFirstTimeout())
-        // to be able to compare dates' day of week correctly
-        copy.setFirstDayOfWeek(Calendar.SUNDAY);
         return copy;
     }
 
@@ -790,6 +756,42 @@ public class CalendarBasedTimeout {
         clonedSchedule.end(schedule.getEnd());
 
         return clonedSchedule;
+    }
+
+    private void resetCalendarHours(Calendar calendar) {
+        setCalendarHours(calendar, this.hour.getFirst());
+    }
+
+    private void resetCalendarMinutes(Calendar calendar) {
+        setCalendarMinutes(calendar, this.minute.getFirst());
+    }
+
+    private void resetCalendarSeconds(Calendar calendar) {
+        setCalendarSeconds(calendar, this.second.getFirst());
+    }
+
+    private void resetCalendarMilliseconds(Calendar calendar) {
+        setCalendarMilliseconds(calendar, 0);
+    }
+
+    private void setCalendarHours(Calendar calendar, int value) {
+        // setting fields with 'add' works around ambiguous times (std vs dst)
+        calendar.add(Calendar.HOUR_OF_DAY, value - calendar.get(Calendar.HOUR_OF_DAY));
+    }
+
+    private void setCalendarMinutes(Calendar calendar, int value) {
+        // setting fields with 'add' works around ambiguous times (std vs dst)
+        calendar.add(Calendar.MINUTE, value - calendar.get(Calendar.MINUTE));
+    }
+
+    private void setCalendarSeconds(Calendar calendar, int value) {
+        // setting fields with 'add' works around ambiguous times (std vs dst)
+        calendar.add(Calendar.SECOND, value - calendar.get(Calendar.SECOND));
+    }
+
+    private void setCalendarMilliseconds(Calendar calendar, int value) {
+        // setting fields with 'add' works around ambiguous times (std vs dst)
+        calendar.add(Calendar.MILLISECOND, value - calendar.get(Calendar.MILLISECOND));
     }
 
 }
