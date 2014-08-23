@@ -640,6 +640,155 @@ public class CalendarBasedTimeoutTestCase {
     }
 
     /**
+     * Tests correct timeouts going through a DST hour rollback (Europe/Lisbon, 27 Oct 2013, 02:00)
+     */
+    @Test
+    public void testDSTRollbackWithSpecificHour() {
+        TimeZone timeZone = TimeZone.getTimeZone("Europe/Lisbon");
+        int year = 2013;
+        int month = Calendar.OCTOBER;
+        int dayOfMonth = 27;
+        int hourOfDay = 1;
+        int minute = 10;
+        int second = 0;
+
+        Calendar start = new GregorianCalendar(timeZone);
+        start.clear();
+        // set DST offset to ensure start is the 1:10 DST, not STD
+        start.set(Calendar.DST_OFFSET, 60*60*1000);
+        start.set(year, month, dayOfMonth, hourOfDay, minute, second);
+        Assert.assertEquals(year, start.get(Calendar.YEAR));
+        Assert.assertEquals(month, start.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, start.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(hourOfDay, start.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(minute, start.get(Calendar.MINUTE));
+        Assert.assertEquals(second, start.get(Calendar.SECOND));
+
+        // any day of year, time allowed is 01:00, 01:30, 02:00 or 02:30
+        ScheduleExpression expression = new ScheduleExpression();
+        expression.timezone(timeZone.getID());
+        expression.dayOfMonth("*");
+        expression.hour("1, 2");
+        expression.minute("0, 30");
+        expression.second("0");
+        expression.start(start.getTime());
+
+        CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(expression);
+
+        // 1st timeout should be 01:30 DST
+        Calendar timeout1 = calendarTimeout.getFirstTimeout();
+        Assert.assertNotNull(timeout1);
+        Assert.assertEquals(year, timeout1.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout1.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout1.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout1.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout1.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout1.get(Calendar.SECOND));
+
+        // 2nd timeout should be 01:00 STD, 30 minutes after 1st timeout
+        Calendar timeout2 = calendarTimeout.getNextTimeout(timeout1);
+        Assert.assertNotNull(timeout2);
+        Assert.assertEquals(year, timeout2.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout2.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout2.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout2.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout2.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout2.get(Calendar.SECOND));
+        Assert.assertEquals(timeout1.getTimeInMillis() + (30 * 60 * 1000), timeout2.getTimeInMillis());
+
+        // 3nd timeout should advance to 02:00 STD, 1 hour after 2nd timeout, skipping 01:30 STD
+        Calendar timeout3 = calendarTimeout.getNextTimeout(timeout2);
+        Assert.assertNotNull(timeout3);
+        Assert.assertEquals(year, timeout3.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout3.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout3.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout3.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout3.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout3.get(Calendar.SECOND));
+        Assert.assertEquals(timeout2.getTimeInMillis() + (60 * 60 * 1000), timeout3.getTimeInMillis());
+    }
+
+    /**
+     * Tests correct timeouts going through a DST rollback different than 1 hour (Australia/Lord_Howe, 7 Apr 2013, 02:00)
+     */
+    @Test
+    public void testDSTRollbackWithSpecificMinute() {
+        TimeZone timeZone = TimeZone.getTimeZone("Australia/Lord_Howe");
+        int year = 2013;
+        int month = Calendar.APRIL;
+        int dayOfMonth = 7;
+        int hourOfDay = 1;
+        int minute = 50;
+        int second = 0;
+
+        Calendar start = new GregorianCalendar(timeZone);
+        start.clear();
+        // set DST offset to ensure start is the 1:50 DST, not STD
+        start.set(Calendar.DST_OFFSET, 30*60*1000);
+        start.set(year, month, dayOfMonth, hourOfDay, minute, second);
+        Assert.assertEquals(year, start.get(Calendar.YEAR));
+        Assert.assertEquals(month, start.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, start.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(hourOfDay, start.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(minute, start.get(Calendar.MINUTE));
+        Assert.assertEquals(second, start.get(Calendar.SECOND));
+
+        // any day of year, any hour, minutes allowed are 0 and 30
+        ScheduleExpression expression = new ScheduleExpression();
+        expression.timezone(timeZone.getID());
+        expression.dayOfMonth("*");
+        expression.hour("*");
+        expression.minute("0, 10, 20, 30, 40, 50");
+        expression.second("0");
+        expression.start(start.getTime());
+
+        CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(expression);
+
+        // 1st timeout should be 01:50 DST
+        Calendar timeout1 = calendarTimeout.getFirstTimeout();
+        Assert.assertNotNull(timeout1);
+        Assert.assertEquals(year, timeout1.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout1.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout1.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout1.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(50, timeout1.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout1.get(Calendar.SECOND));
+
+        // 2nd timeout should be 01:30 STD after 30 min DST rollback, yet 10 minutes after 1st timeout
+        Calendar timeout2 = calendarTimeout.getNextTimeout(timeout1);
+        Assert.assertNotNull(timeout2);
+        Assert.assertEquals(year, timeout2.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout2.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout2.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout2.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout2.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout2.get(Calendar.SECOND));
+        Assert.assertEquals(timeout1.getTimeInMillis() + (10 * 60 * 1000), timeout2.getTimeInMillis());
+
+        // 3rd timeout should be 01:40 STD, 10 minutes after 2nd timeout
+        Calendar timeout3 = calendarTimeout.getNextTimeout(timeout2);
+        Assert.assertNotNull(timeout3);
+        Assert.assertEquals(year, timeout3.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout3.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout3.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout3.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(40, timeout3.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout3.get(Calendar.SECOND));
+        Assert.assertEquals(timeout2.getTimeInMillis() + (10 * 60 * 1000), timeout3.getTimeInMillis());
+
+        // 4th timeout should advance to 02:00 STD, 20 min after 3rd timeout, skipping 01:50 STD
+        Calendar timeout4 = calendarTimeout.getNextTimeout(timeout3);
+        Assert.assertNotNull(timeout4);
+        Assert.assertEquals(year, timeout4.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout4.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout4.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout4.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout4.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout4.get(Calendar.SECOND));
+        Assert.assertEquals(timeout3.getTimeInMillis() + (20 * 60 * 1000), timeout4.getTimeInMillis());
+    }
+
+    /**
      * Tests correct timeouts going through a DST hour forward (Europe/Lisbon, 31 Mar 2013, 01:00)
      */
     @Test
@@ -672,7 +821,7 @@ public class CalendarBasedTimeoutTestCase {
 
         CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(expression);
 
-        // 1st timeout should equal to start i.e. 00:00
+        // 1st timeout should be 00:00
         Calendar timeout1 = calendarTimeout.getFirstTimeout();
         Assert.assertNotNull(timeout1);
         Assert.assertEquals(year, timeout1.get(Calendar.YEAR));
@@ -714,48 +863,171 @@ public class CalendarBasedTimeoutTestCase {
         Assert.assertEquals(minute + 30, timeout4.get(Calendar.MINUTE));
         Assert.assertEquals(second, timeout4.get(Calendar.SECOND));
         Assert.assertEquals(timeout3.getTimeInMillis() + (30 * 60 * 1000), timeout4.getTimeInMillis());
+
+        // 5th timeout should advance to 03:00
+        Calendar timeout5 = calendarTimeout.getNextTimeout(timeout4);
+        Assert.assertNotNull(timeout5);
+        Assert.assertEquals(year, timeout5.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout5.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout5.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(hourOfDay + 3, timeout5.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(minute, timeout5.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout5.get(Calendar.SECOND));
+        Assert.assertEquals(timeout4.getTimeInMillis() + (30 * 60 * 1000), timeout5.getTimeInMillis());
     }
 
     /**
-     * Check the timeouts for schedule of every 2h and every day in one year. The test should go through DST roll and forwards.
-     *
-     * The test is run for each day of a whole year.
+     * Tests correct timeouts going through a DST hour forward using specific hour (Europe/Lisbon, 31 Mar 2013, 01:00)
      */
-    //@Test
-    public void testEveryDayEveryZeroHoursInOneYear() {
-        Calendar start = new GregorianCalendar(this.timezone);
+    @Test
+    public void testDSTForwardWithSpecificHour() {
+        TimeZone timeZone = TimeZone.getTimeZone("Europe/Lisbon");
+        int year = 2013;
+        int month = Calendar.MARCH;
+        int dayOfMonth = 31;
+        int hourOfDay = 0;
+        int minute = 30;
+        int second = 0;
+
+        Calendar start = new GregorianCalendar(timeZone);
         start.clear();
-        start.set(2014, 3, 18);
-        Calendar end = (Calendar) start.clone();
-        end.add(Calendar.YEAR, 1);
-        do {
-            // setup schedule
-            ScheduleExpression schedule = this.getTimezoneSpecificScheduleExpression();
-            schedule.month("*");
-            schedule.dayOfMonth("1");
-            schedule.hour("0-12");
-            schedule.minute("0/5");
-            schedule.second("0");
-            Calendar scheduleStart = (Calendar) start.clone();
-            // add one day
-            scheduleStart.add(Calendar.DAY_OF_MONTH, 1);
-            if(scheduleStart.get(Calendar.DAY_OF_MONTH) == 1) {
-                // if the next day is 1, add one more day, to avoid first timeout by advancing minutes only
-                scheduleStart.add(Calendar.DAY_OF_MONTH, 1);
-            }
-            schedule.start(scheduleStart.getTime());
-            // create calendar timeout and retrieve first timeout
-            CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(schedule);
-            Calendar firstTimeout = calendarTimeout.getFirstTimeout();
-            // assert first timeout result
-            if(firstTimeout.get(Calendar.DAY_OF_MONTH) != 1 ||
-                    firstTimeout.get(Calendar.HOUR_OF_DAY) != 0 ||
-                    firstTimeout.get(Calendar.MINUTE) != 0) {
-                Assert.fail(timeZoneDisplayName);
-            }
-            // move to next day
-            start.add(Calendar.DAY_OF_MONTH,1);
-        } while (start.before(end));
+        start.set(year, month, dayOfMonth, hourOfDay, minute, second);
+        Assert.assertEquals(year, start.get(Calendar.YEAR));
+        Assert.assertEquals(month, start.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, start.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(hourOfDay, start.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(minute, start.get(Calendar.MINUTE));
+        Assert.assertEquals(second, start.get(Calendar.SECOND));
+
+        ScheduleExpression expression = new ScheduleExpression();
+        expression.timezone(timeZone.getID());
+        expression.dayOfMonth("*");
+        expression.hour("0, 1, 3");
+        expression.minute("0, 30");
+        expression.second("0");
+        expression.start(start.getTime());
+
+        CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(expression);
+
+        // 1st timeout should be 00:30
+        Calendar timeout1 = calendarTimeout.getFirstTimeout();
+        Assert.assertNotNull(timeout1);
+        Assert.assertEquals(year, timeout1.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout1.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout1.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(0, timeout1.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout1.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout1.get(Calendar.SECOND));
+
+        // 2nd timeout should advance to 02:00, due to DST forward
+        Calendar timeout2 = calendarTimeout.getNextTimeout(timeout1);
+        Assert.assertNotNull(timeout2);
+        Assert.assertEquals(year, timeout2.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout2.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout2.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout2.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout2.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout2.get(Calendar.SECOND));
+        Assert.assertEquals(timeout1.getTimeInMillis() + (30 * 60 * 1000), timeout2.getTimeInMillis());
+
+        // 3rd timeout should advance to 02:30, due to DST forward
+        Calendar timeout3 = calendarTimeout.getNextTimeout(timeout2);
+        Assert.assertNotNull(timeout3);
+        Assert.assertEquals(year, timeout3.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout3.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout3.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout3.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout3.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout3.get(Calendar.SECOND));
+        Assert.assertEquals(timeout2.getTimeInMillis() + (30 * 60 * 1000), timeout3.getTimeInMillis());
+
+        // 4th timeout should advance to 03:00
+        Calendar timeout4 = calendarTimeout.getNextTimeout(timeout3);
+        Assert.assertNotNull(timeout4);
+        Assert.assertEquals(year, timeout4.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout4.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout4.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(3, timeout4.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout4.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout4.get(Calendar.SECOND));
+        Assert.assertEquals(timeout3.getTimeInMillis() + (30 * 60 * 1000), timeout4.getTimeInMillis());
+    }
+
+    /**
+     * Tests correct timeouts going through a DST hour forward using specific minute (Australia/Lord_Howe, 6 Oct 2013, 02:00)
+     */
+    @Test
+    public void testDSTForwardWithSpecificMinute() {
+        TimeZone timeZone = TimeZone.getTimeZone("Australia/Lord_Howe");
+        int year = 2013;
+        int month = Calendar.OCTOBER;
+        int dayOfMonth = 6;
+        int hourOfDay = 1;
+        int minute = 30;
+        int second = 0;
+
+        Calendar start = new GregorianCalendar(timeZone);
+        start.clear();
+        start.set(year, month, dayOfMonth, hourOfDay, minute, second);
+        Assert.assertEquals(year, start.get(Calendar.YEAR));
+        Assert.assertEquals(month, start.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, start.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(hourOfDay, start.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(minute, start.get(Calendar.MINUTE));
+        Assert.assertEquals(second, start.get(Calendar.SECOND));
+
+        ScheduleExpression expression = new ScheduleExpression();
+        expression.timezone(timeZone.getID());
+        expression.dayOfMonth("*");
+        expression.hour("*");
+        expression.minute("0, 15, 30");
+        expression.second("0");
+        expression.start(start.getTime());
+
+        CalendarBasedTimeout calendarTimeout = new CalendarBasedTimeout(expression);
+
+        // 1st timeout should be 01:30
+        Calendar timeout1 = calendarTimeout.getFirstTimeout();
+        Assert.assertNotNull(timeout1);
+        Assert.assertEquals(year, timeout1.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout1.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout1.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(1, timeout1.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout1.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout1.get(Calendar.SECOND));
+
+        // 2nd timeout should advance to 02:30, due to DST forward
+        Calendar timeout2 = calendarTimeout.getNextTimeout(timeout1);
+        Assert.assertNotNull(timeout2);
+        Assert.assertEquals(year, timeout2.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout2.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout2.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout2.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(30, timeout2.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout2.get(Calendar.SECOND));
+        Assert.assertEquals(timeout1.getTimeInMillis() + (30 * 60 * 1000), timeout2.getTimeInMillis());
+
+        // 3rd timeout should advance to 02:45, due to DST forward
+        Calendar timeout3 = calendarTimeout.getNextTimeout(timeout2);
+        Assert.assertNotNull(timeout3);
+        Assert.assertEquals(year, timeout3.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout3.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout3.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(2, timeout3.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(45, timeout3.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout3.get(Calendar.SECOND));
+        Assert.assertEquals(timeout2.getTimeInMillis() + (15 * 60 * 1000), timeout3.getTimeInMillis());
+
+        // 4th timeout should advance to 03:00
+        Calendar timeout4 = calendarTimeout.getNextTimeout(timeout3);
+        Assert.assertNotNull(timeout4);
+        Assert.assertEquals(year, timeout4.get(Calendar.YEAR));
+        Assert.assertEquals(month, timeout4.get(Calendar.MONTH));
+        Assert.assertEquals(dayOfMonth, timeout4.get(Calendar.DAY_OF_MONTH));
+        Assert.assertEquals(3, timeout4.get(Calendar.HOUR_OF_DAY));
+        Assert.assertEquals(0, timeout4.get(Calendar.MINUTE));
+        Assert.assertEquals(second, timeout4.get(Calendar.SECOND));
+        Assert.assertEquals(timeout3.getTimeInMillis() + (15 * 60 * 1000), timeout4.getTimeInMillis());
     }
 
     private ScheduleExpression getTimezoneSpecificScheduleExpression() {

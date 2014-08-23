@@ -104,6 +104,11 @@ public class CalendarBasedTimeout {
     private TimeZone timezone;
 
     /**
+     * Indicates if DST changes need to be handled, due to usage of specific hour or minutes in the schedule expression
+     */
+    private final boolean handleDSTChanges;
+
+    /**
      * Creates a {@link CalendarBasedTimeout} from the passed <code>schedule</code>.
      * <p>
      * This constructor parses the passed {@link javax.ejb.ScheduleExpression} and sets up
@@ -151,6 +156,15 @@ public class CalendarBasedTimeout {
             }
         } else {
             this.timezone = TimeZone.getDefault();
+        }
+
+        // check if DST changes need to be handled
+        if (!timezone.useDaylightTime()) {
+            handleDSTChanges = false;
+        } else {
+            final int dstSavings = timezone.getDSTSavings();
+            final boolean dstSavingsLessThanOneHour = dstSavings < 3600000;
+            handleDSTChanges = (dstSavingsLessThanOneHour && !scheduleExpression.getMinute().equals("*")) || (!dstSavingsLessThanOneHour && !scheduleExpression.getHour().equals("*"));
         }
 
         // Now that we have parsed the values from the ScheduleExpression,
@@ -209,7 +223,6 @@ public class CalendarBasedTimeout {
             if (!first) {
                 // increment the current second by 1
                 nextCal.add(Calendar.SECOND, 1);
-                setCalendarMillisecond(nextCal, 0);
             }
         }
 
@@ -218,12 +231,16 @@ public class CalendarBasedTimeout {
             return null;
         }
 
-        nextCal = this.computeNextMinute(nextCal);
+        boolean handleDSTChanges = !first && this.handleDSTChanges;
+        final int dstSavings = timezone.getDSTSavings();
+        final boolean dstSavingsLessThanOneHour = dstSavings < 3600000;
+
+        nextCal = this.computeNextMinute(nextCal, handleDSTChanges && dstSavingsLessThanOneHour);
         if (nextCal == null) {
             return null;
         }
 
-        nextCal = this.computeNextHour(nextCal);
+        nextCal = this.computeNextHour(nextCal, handleDSTChanges && !dstSavingsLessThanOneHour);
         if (nextCal == null) {
             return null;
         }
@@ -243,10 +260,21 @@ public class CalendarBasedTimeout {
             return null;
         }
 
-        // one final check
         if (this.noMoreTimeouts(nextCal)) {
             return null;
         }
+
+        if (handleDSTChanges && dstRollback(nextCal)) {
+            // nextCal on DST
+            Calendar nextCalOnDST = (Calendar) nextCal.clone();
+            nextCalOnDST.set(Calendar.DST_OFFSET, dstSavings);
+            if (!firstTimeout.after(nextCalOnDST)) {
+                // nextCal on DST is valid and after first timeout, assume it was used, skip next cal timeout
+                ROOT_LOGGER.debugf("Skipping repeated timeout due to DST rollback: %s", nextCal);
+                nextCal = getNextTimeout(nextCal);
+            }
+        }
+
         return nextCal;
     }
 
@@ -285,17 +313,27 @@ public class CalendarBasedTimeout {
         return currentCal;
     }
 
-    private Calendar computeNextMinute(Calendar currentCal) {
+    private Calendar computeNextMinute(Calendar currentCal, boolean handleDSTChanges) {
         if (this.noMoreTimeouts(currentCal)) {
             return null;
         }
 
-        Integer nextMinute = this.minute.getNextMatch(currentCal);
-
+        final int currentMinute = currentCal.get(Calendar.MINUTE);
+        Integer nextMinute = null;
+        if (handleDSTChanges && dstForward(currentCal)) {
+            // when handling dst changes get next match using minute on std
+            int dstSavingMinutes = timezone.getDSTSavings() / (60*1000);
+            nextMinute = this.minute.getNextMatch(currentMinute - dstSavingMinutes);
+            if (nextMinute != null) {
+                nextMinute += dstSavingMinutes;
+            }
+        } else {
+            nextMinute = this.minute.getNextMatch(currentMinute);
+        }
         if (nextMinute == null) {
             return null;
         }
-        int currentMinute = currentCal.get(Calendar.MINUTE);
+
         // if the current minute is a match, then nothing else to
         // do. Just return back the calendar
         if (currentMinute == nextMinute) {
@@ -323,17 +361,27 @@ public class CalendarBasedTimeout {
         return currentCal;
     }
 
-    private Calendar computeNextHour(Calendar currentCal) {
+    private Calendar computeNextHour(Calendar currentCal, boolean handleDSTChanges) {
         if (this.noMoreTimeouts(currentCal)) {
             return null;
         }
 
-        Integer nextHour = this.hour.getNextMatch(currentCal);
-
+        final int currentHour = currentCal.get(Calendar.HOUR_OF_DAY);
+        Integer nextHour = null;
+        if (handleDSTChanges && dstForward(currentCal)) {
+            // when handling dst changes get next match using hour on std
+            int dstSavingHours = timezone.getDSTSavings() / (60*60*1000);
+            nextHour = this.hour.getNextMatch(currentHour - dstSavingHours);
+            if (nextHour != null) {
+                nextHour += dstSavingHours;
+            }
+        } else {
+            nextHour = this.hour.getNextMatch(currentHour);
+        }
         if (nextHour == null) {
             return null;
         }
-        int currentHour = currentCal.get(Calendar.HOUR_OF_DAY);
+
         // if the current hour is a match, then nothing else to
         // do. Just return back the calendar
         if (currentHour == nextHour) {
@@ -365,7 +413,6 @@ public class CalendarBasedTimeout {
     }
 
     private Calendar computeNextDayOfWeek(Calendar currentCal) {
-
         if (this.noMoreTimeouts(currentCal)) {
             return null;
         }
@@ -436,16 +483,17 @@ public class CalendarBasedTimeout {
         // that the next month is in the next year (i.e. current year needs to
         // be advanced to next year).
 
+        // set the chosen month
+        currentCal.set(Calendar.MONTH, nextMonth);
         // since we are moving to a different month (as compared to the current month),
         // we should reset the second, minute, hour, day-of-week and dayofmonth appropriately, to their first possible
         // values
         resetCalendarSecondToFirst(currentCal);
         resetCalendarMinuteToFirst(currentCal);
         resetCalendarHourToFirst(currentCal);
-        currentCal.set(Calendar.DAY_OF_WEEK, this.dayOfWeek.getFirst());
+        // note, day of month/week must be computed elsewhere
         currentCal.set(Calendar.DAY_OF_MONTH, 1);
-        // set the chosen month
-        currentCal.set(Calendar.MONTH, nextMonth);
+
         // case#2
         if (nextMonth < currentMonth) {
             // advance to next year
@@ -701,4 +749,31 @@ public class CalendarBasedTimeout {
         calendar.add(Calendar.MILLISECOND, value - calendar.get(Calendar.MILLISECOND));
     }
 
+    private boolean dstForward(Calendar calendar) {
+        int dstOffset = calendar.get(Calendar.DST_OFFSET);
+        if (dstOffset != 0) {
+            // in DST
+            Calendar clone = (Calendar) calendar.clone();
+            clone.add(Calendar.MILLISECOND, -timezone.getDSTSavings());
+            if (clone.get(Calendar.DST_OFFSET) == 0) {
+                // DST forward
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean dstRollback(Calendar calendar) {
+        int dstOffset = calendar.get(Calendar.DST_OFFSET);
+        if (dstOffset == 0) {
+            // in STD
+            Calendar clone = (Calendar) calendar.clone();
+            clone.add(Calendar.MILLISECOND, -timezone.getDSTSavings());
+            if (clone.get(Calendar.DST_OFFSET) > 0) {
+                // DST roll
+                return true;
+            }
+        }
+        return false;
+    }
 }
