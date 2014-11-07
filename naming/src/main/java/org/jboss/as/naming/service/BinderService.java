@@ -97,7 +97,7 @@ public class BinderService implements Service<ManagedReferenceFactory> {
         final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
         namingStore.remove(serviceName);
         controller = null;
-        ROOT_LOGGER.tracef("Unbound resource %s into naming store %s (service name %s)", name, namingStore, serviceName);
+        ROOT_LOGGER.tracef("Unbound resource %s from naming store %s (service name %s)", name, namingStore, serviceName);
     }
 
     /**

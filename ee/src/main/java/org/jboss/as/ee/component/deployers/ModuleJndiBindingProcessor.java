@@ -228,7 +228,7 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
             } else {
                 BinderService service;
                 try {
-                    service = new SharedBinderService(bindInfo.getBindName(), bindingConfiguration.getSource());
+                    service = new SharedBinderService(bindInfo.getBindName(), bindingConfiguration.getSource(), bindInfo.getBinderServiceName());
                     ServiceBuilder<ManagedReferenceFactory> serviceBuilder = CurrentServiceContainer.getServiceContainer().addService(bindInfo.getBinderServiceName(), service);
                     bindingConfiguration.getSource().getResourceValue(resolutionContext, serviceBuilder, phaseContext, service.getManagedObjectInjector());
                     serviceBuilder.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, service.getNamingStoreInjector());

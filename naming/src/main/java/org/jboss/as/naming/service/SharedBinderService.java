@@ -47,20 +47,18 @@ public class SharedBinderService extends BinderService {
     private Owners owners = new Owners();
 
     /**
-     *
-     * @param name
-     * @param source
+     * the bind's service name
      */
-    public SharedBinderService(final String name, Object source) {
-        super(name, source);
-    }
+    private final ServiceName serviceName;
 
     /**
      *
      * @param name
+     * @param source
      */
-    public SharedBinderService(final String name) {
-        this(name, null);
+    public SharedBinderService(final String name, Object source, final ServiceName serviceName) {
+        super(name, source);
+        this.serviceName = serviceName;
     }
 
     /**
@@ -69,6 +67,14 @@ public class SharedBinderService extends BinderService {
      */
     public Owners getOwners() {
         return owners;
+    }
+
+    /**
+     * Retrieves the binds' service name.
+     * @return
+     */
+    public ServiceName getServiceName() {
+        return serviceName;
     }
 
     @Override
