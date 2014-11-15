@@ -51,6 +51,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 import org.jboss.as.server.deployment.DeploymentUtils;
 import org.jboss.as.server.deployment.reflect.ClassIndex;
 import org.jboss.as.server.deployment.reflect.DeploymentClassIndex;
+import org.jboss.msc.service.AbstractServiceListener;
 import org.jboss.msc.service.CircularDependencyException;
 import org.jboss.msc.service.DuplicateServiceException;
 import org.jboss.msc.service.ServiceBuilder;
@@ -227,15 +228,16 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                 }
             } else {
                 BinderService service;
+                ServiceController<ManagedReferenceFactory> controller;
                 try {
                     service = new SharedBinderService(bindInfo.getBindName(), bindingConfiguration.getSource(), bindInfo.getBinderServiceName());
                     ServiceBuilder<ManagedReferenceFactory> serviceBuilder = CurrentServiceContainer.getServiceContainer().addService(bindInfo.getBinderServiceName(), service);
                     bindingConfiguration.getSource().getResourceValue(resolutionContext, serviceBuilder, phaseContext, service.getManagedObjectInjector());
                     serviceBuilder.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, service.getNamingStoreInjector());
                     serviceBuilder.addListener(serviceVerificationHandler);
-                    serviceBuilder.install();
+                    controller = serviceBuilder.install();
                 } catch (DuplicateServiceException e) {
-                    final ServiceController<ManagedReferenceFactory> controller = (ServiceController<ManagedReferenceFactory>) CurrentServiceContainer.getServiceContainer().getService(bindInfo.getBinderServiceName());
+                    controller = (ServiceController<ManagedReferenceFactory>) CurrentServiceContainer.getServiceContainer().getService(bindInfo.getBinderServiceName());
                     if (controller == null)
                         throw e;
                     service = (BinderService) controller.getService();
@@ -245,6 +247,7 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                 }
                 if (service instanceof SharedBinderService) {
                     phaseContext.getDeploymentUnit().addToAttachmentList(org.jboss.as.naming.deployment.Attachments.SHARED_BINDER_SERVICES, (SharedBinderService)service);
+                    controller.addListener(new BinderReleaseListener(bindInfo.getBinderServiceName()));
                 }
             }
         } else {
@@ -257,5 +260,30 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
     }
 
     public void undeploy(DeploymentUnit context) {
+    }
+
+    private static class BinderReleaseListener<T> extends AbstractServiceListener<T> {
+
+        private final ServiceName binderService;
+
+        private BinderReleaseListener(ServiceName binderService) {
+            this.binderService = binderService;
+        }
+
+        @Override
+        public void listenerAdded(final ServiceController<? extends T> serviceController) {
+            EeLogger.ROOT_LOGGER.warnf("Service %s listener added, current state is %s", binderService, serviceController.getState());
+            if (serviceController.getState() == ServiceController.State.REMOVED) {
+                serviceController.removeListener(this);
+            }
+        }
+
+        @Override
+        public void transition(final ServiceController<? extends T> serviceController, final ServiceController.Transition transition) {
+            EeLogger.ROOT_LOGGER.warnf("Service %s with state %s transition, it is %s, it was %s", binderService, serviceController.getState(), transition.getAfter(), transition.getBefore());
+            if (serviceController.getState() == ServiceController.State.REMOVED) {
+                serviceController.removeListener(this);
+            }
+        }
     }
 }

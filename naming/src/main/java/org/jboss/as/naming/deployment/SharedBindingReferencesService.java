@@ -38,6 +38,8 @@ import org.jboss.msc.service.StopContext;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.jboss.as.naming.logging.NamingLogger.ROOT_LOGGER;
+
 /**
  * A {@link Service} that manages the deployment's references with respect to bindings, which may be shared among deployments.
  *
@@ -67,11 +69,12 @@ public class SharedBindingReferencesService implements Service<SharedBindingRefe
         final List<SharedBinderService> sharedBinderServices = deploymentUnit.getAttachmentList(org.jboss.as.naming.deployment.Attachments.SHARED_BINDER_SERVICES);
         final SharedBindingReferencesService service = new SharedBindingReferencesService(sharedBinderServices);
         final ServiceBuilder<References> serviceBuilder = serviceTarget.addService(serviceName, service);
+        /*
         if (sharedBinderServices != null) {
             for (SharedBinderService sharedBinderService : sharedBinderServices) {
                 serviceBuilder.addDependency(sharedBinderService.getServiceName());
             }
-        }
+        }*/
         serviceBuilder.addDependency(NamingService.SERVICE_NAME);
         return serviceBuilder.install();
     }
@@ -101,12 +104,16 @@ public class SharedBindingReferencesService implements Service<SharedBindingRefe
 
     @Override
     public void start(StartContext context) throws StartException {
+        ROOT_LOGGER.warnf("SharedBindingReferencesService %s starting", context.getController().getName());
         references.acquireAll(servicesToAcquireOnStart);
+        ROOT_LOGGER.warnf("SharedBindingReferencesService %s started", context.getController().getName());
     }
 
     @Override
     public void stop(StopContext context) {
+        ROOT_LOGGER.warnf("SharedBindingReferencesService %s stopping", context.getController().getName());
         references.releaseAll();
+        ROOT_LOGGER.warnf("SharedBindingReferencesService %s stopped", context.getController().getName());
     }
 
     /**
@@ -115,15 +122,14 @@ public class SharedBindingReferencesService implements Service<SharedBindingRefe
     public static class References {
 
         // List instead of Set because binder services use a counter to track its references, and a deployment may have multiple components acquiring same shared bind
-        private List<SharedBinderService.Owners> services;
+        private List<SharedBinderService> services;
 
         public synchronized void acquire(SharedBinderService service) {
             if (services == null) {
                 services = new ArrayList<>();
             }
-            SharedBinderService.Owners serviceOwners = service.getOwners();
-            serviceOwners.acquire();
-            services.add(serviceOwners);
+            service.acquire();
+            services.add(service);
         }
 
         public synchronized void acquireAll(List<SharedBinderService> servicesToAcquire) {
@@ -136,7 +142,7 @@ public class SharedBindingReferencesService implements Service<SharedBindingRefe
 
         public synchronized boolean contains(ServiceName serviceName) {
             if (services != null) {
-                for (SharedBinderService.Owners service : services) {
+                for (SharedBinderService service : services) {
                     if (serviceName.equals(service.getServiceName())) {
                         return true;
                     }
@@ -147,7 +153,7 @@ public class SharedBindingReferencesService implements Service<SharedBindingRefe
 
         public synchronized void releaseAll() {
             if (services != null) {
-                for (SharedBinderService.Owners service : services) {
+                for (SharedBinderService service : services) {
                     try {
                         service.release();
                     } catch (Throwable e) {

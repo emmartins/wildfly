@@ -79,12 +79,13 @@ public class BinderService implements Service<ManagedReferenceFactory> {
      * @param context The start context
      * @throws StartException If the entity can not be bound
      */
-    public void start(StartContext context) throws StartException {
-        controller = context.getController();
-        final ServiceName serviceName = controller.getName();
-        final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
-        namingStore.add(serviceName);
-        ROOT_LOGGER.tracef("Bound resource %s into naming store %s (service name %s)", name, namingStore, serviceName);
+    public synchronized void start(StartContext context) throws StartException {
+            controller = context.getController();
+            final ServiceName serviceName = controller.getName();
+            final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
+            namingStore.add(serviceName);
+            ROOT_LOGGER.tracef("Bound resource %s into naming store %s (service name %s)", name, namingStore, serviceName);
+
     }
 
     /**
@@ -92,21 +93,26 @@ public class BinderService implements Service<ManagedReferenceFactory> {
      *
      * @param context The stop context
      */
-    public void stop(StopContext context) {
-        final ServiceName serviceName = controller.getName();
-        final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
-        namingStore.remove(serviceName);
-        controller = null;
-        ROOT_LOGGER.tracef("Unbound resource %s from naming store %s (service name %s)", name, namingStore, serviceName);
+    public synchronized void stop(StopContext context) {
+            ROOT_LOGGER.warnf("BinderService stop resource %s", name);
+            final ServiceName serviceName = context.getController().getName();
+            final ServiceBasedNamingStore namingStore = namingStoreValue.getValue();
+            namingStore.remove(serviceName);
+            controller = null;
+            ROOT_LOGGER.warnf("Unbound resource %s from naming store %s (service name %s)", name, namingStore, serviceName);
+
     }
 
     /**
      * Forces the binder service stop.
      */
-    public void stopNow() {
-        if (controller != null) {
-            controller.setMode(ServiceController.Mode.REMOVE);
-        }
+    public synchronized void stopNow() {
+            ROOT_LOGGER.warnf("BinderService stopNow resource %s", name);
+            if (controller != null) {
+                controller.setMode(ServiceController.Mode.REMOVE);
+                controller = null;
+            }
+
     }
 
     /**
