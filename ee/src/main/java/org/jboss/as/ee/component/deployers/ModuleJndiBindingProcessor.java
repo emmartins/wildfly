@@ -127,26 +127,41 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
         }
 
         //now add all class level bindings
-        final Set<String> handledClasses = new HashSet<String>();
+        if (!MetadataCompleteMarker.isMetadataComplete(phaseContext.getDeploymentUnit())) {
+            final Set<String> handledClasses = new HashSet<String>();
+            // 1. process component classes
+            for (final ComponentConfiguration componentConfiguration : moduleConfiguration.getComponentConfigurations()) {
+                final Set<Class<?>> classConfigurations = new HashSet<Class<?>>();
+                classConfigurations.add(componentConfiguration.getComponentClass());
 
-        for (final ComponentConfiguration componentConfiguration : moduleConfiguration.getComponentConfigurations()) {
-            final Set<Class<?>> classConfigurations = new HashSet<Class<?>>();
-            classConfigurations.add(componentConfiguration.getComponentClass());
-
-            for (final InterceptorDescription interceptor : componentConfiguration.getComponentDescription().getAllInterceptors()) {
-                try {
-                    final ClassIndex interceptorClass = classIndex.classIndex(interceptor.getInterceptorClassName());
-                    classConfigurations.add(interceptorClass.getModuleClass());
-                } catch (ClassNotFoundException e) {
-                    throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptor.getInterceptorClassName(), componentConfiguration.getComponentClass());
+                for (final InterceptorDescription interceptor : componentConfiguration.getComponentDescription().getAllInterceptors()) {
+                    try {
+                        final ClassIndex interceptorClass = classIndex.classIndex(interceptor.getInterceptorClassName());
+                        classConfigurations.add(interceptorClass.getModuleClass());
+                    } catch (ClassNotFoundException e) {
+                        throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptor.getInterceptorClassName(), componentConfiguration.getComponentClass());
+                    }
+                }
+                processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, componentConfiguration.getComponentDescription().getNamingMode() != ComponentNamingMode.CREATE, classConfigurations, componentConfiguration.getComponentName(), dependencies);
+            }
+            // 2. process other module classes
+            final Set<Class<?>> classConfigurations = new HashSet<>();
+            for (EEModuleClassDescription classDescription : eeModuleDescription.getClassDescriptions()) {
+                if (!handledClasses.contains(classDescription.getClassName())) {
+                    try {
+                        final Class<?> moduleClass = classIndex.classIndex(classDescription.getClassName()).getModuleClass();
+                        classConfigurations.add(moduleClass);
+                    } catch (ClassNotFoundException e) {
+                        // TODO new logger msg
+                        throw new DeploymentUnitProcessingException(e);
+                    }
                 }
             }
-            processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, componentConfiguration.getComponentDescription().getNamingMode(), classConfigurations, componentConfiguration.getComponentName(), dependencies);
+            processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit), classConfigurations, null, dependencies);
         }
-
     }
 
-    private void processClassConfigurations(final DeploymentPhaseContext phaseContext, final EEApplicationClasses applicationClasses, final EEModuleConfiguration moduleConfiguration, final Map<ServiceName, BindingConfiguration> deploymentDescriptorBindings, final Set<String> handledClasses, final ComponentNamingMode namingMode, final Set<Class<?>> classes, final String componentName, final List<ServiceName> dependencies) throws DeploymentUnitProcessingException {
+    private void processClassConfigurations(final DeploymentPhaseContext phaseContext, final EEApplicationClasses applicationClasses, final EEModuleConfiguration moduleConfiguration, final Map<ServiceName, BindingConfiguration> deploymentDescriptorBindings, final Set<String> handledClasses, final boolean compIsModule, final Set<Class<?>> classes, final String componentName, final List<ServiceName> dependencies) throws DeploymentUnitProcessingException {
         for (final Class<?> clazz : classes) {
             new ClassDescriptionTraversal(clazz, applicationClasses) {
                 @Override
@@ -155,33 +170,34 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                         return;
                     }
                     if (classDescription.isInvalid()) {
-                        throw EeLogger.ROOT_LOGGER.componentClassHasErrors(classDescription.getClassName(), componentName, classDescription.getInvalidMessage());
+                        if (componentName != null) {
+                            throw EeLogger.ROOT_LOGGER.componentClassHasErrors(classDescription.getClassName(), componentName, classDescription.getInvalidMessage());
+                        } else {
+                            // TODO ensure ignoring invalid module classes is correct
+                            return;
+                        }
                     }
                     //only process classes once
-                    if (handledClasses.contains(classDescription.getClassName())) {
+                    if (!handledClasses.add(classDescription.getClassName())) {
                         return;
                     }
-                    handledClasses.add(classDescription.getClassName());
                     // TODO: Should the view configuration just return a Set instead of a List? Or is there a better way to
                     // handle these duplicates?
-                    if (!MetadataCompleteMarker.isMetadataComplete(phaseContext.getDeploymentUnit())) {
-                        final Set<BindingConfiguration> classLevelBindings = new HashSet<BindingConfiguration>(classDescription.getBindingConfigurations());
-                        for (BindingConfiguration binding : classLevelBindings) {
-                            final String bindingName = binding.getName();
-                            final boolean compBinding = bindingName.startsWith("java:comp") || !bindingName.startsWith("java:");
-                            if (namingMode == ComponentNamingMode.CREATE && compBinding) {
-                                //components with their own comp context do their own binding
-                                continue;
-                            }
-                            final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(moduleConfiguration.getApplicationName(), moduleConfiguration.getModuleName(), null, false, binding.getName());
-
-                            ROOT_LOGGER.tracef("Binding %s using service %s", binding.getName(), bindInfo.getBinderServiceName());
-
-                            if (deploymentDescriptorBindings.containsKey(bindInfo.getBinderServiceName())) {
-                                continue; //this has been overridden by a DD binding
-                            }
-                            addJndiBinding(moduleConfiguration, binding, phaseContext, dependencies);
+                    final Set<BindingConfiguration> classLevelBindings = new HashSet<BindingConfiguration>(classDescription.getBindingConfigurations());
+                    for (BindingConfiguration binding : classLevelBindings) {
+                        final String bindingName = binding.getName();
+                        if (!compIsModule && (bindingName.startsWith("java:comp") || !bindingName.startsWith("java:"))) {
+                            //components with their own comp context do their own binding
+                            continue;
                         }
+                        final ContextNames.BindInfo bindInfo = ContextNames.bindInfoForEnvEntry(moduleConfiguration.getApplicationName(), moduleConfiguration.getModuleName(), null, false, bindingName);
+
+                        ROOT_LOGGER.tracef("Binding %s using service %s", bindingName, bindInfo.getBinderServiceName());
+
+                        if (deploymentDescriptorBindings.containsKey(bindInfo.getBinderServiceName())) {
+                            continue; //this has been overridden by a DD binding
+                        }
+                        addJndiBinding(moduleConfiguration, binding, phaseContext, dependencies);
                     }
                 }
             }.run();
