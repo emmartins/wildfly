@@ -1087,4 +1087,29 @@ public interface EeLogger extends BasicLogger {
 
     @Message(id = 111, value = "Cannot run scheduled task %s as container is suspended")
     IllegalStateException cannotRunScheduledTask(Object delegate);
+
+    /**
+     * Creates an exception indicating an class could not be loaded on the module.
+     *
+     * @param cause     the cause of the error.
+     * @param className the name of the class.
+     * @param moduleName the module's name.
+     *
+     * @return a {@link DeploymentUnitProcessingException} for the error.
+     */
+    @Message(id = 112, value = "Could not load class %s on module %s")
+    DeploymentUnitProcessingException cannotLoadModuleClass(@Cause Throwable cause, String className, String moduleName);
+
+    /**
+     * Creates an exception indicating the class, specified by the {@code className} parameter, for the
+     * module, represented by the {@code moduleName} parameter, has errors.
+     *
+     * @param className     the class name.
+     * @param moduleName the module's name.
+     * @param errorMsg      the error message.
+     *
+     * @return an {@link DeploymentUnitProcessingException} for the error.
+     */
+    @Message(id = 113, value = "Class %s for module %s has errors: %n%s")
+    DeploymentUnitProcessingException moduleClassHasErrors(String className, String moduleName, String errorMsg);
 }

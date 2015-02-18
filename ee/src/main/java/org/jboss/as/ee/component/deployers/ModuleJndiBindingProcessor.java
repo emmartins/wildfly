@@ -128,7 +128,7 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
 
         //now add all class level bindings
         final Set<String> handledClasses = new HashSet<String>();
-
+        // 1. component classes
         for (final ComponentConfiguration componentConfiguration : moduleConfiguration.getComponentConfigurations()) {
             final Set<Class<?>> classConfigurations = new HashSet<Class<?>>();
             classConfigurations.add(componentConfiguration.getComponentClass());
@@ -141,12 +141,24 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                     throw EeLogger.ROOT_LOGGER.cannotLoadInterceptor(e, interceptor.getInterceptorClassName(), componentConfiguration.getComponentClass());
                 }
             }
-            processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, componentConfiguration.getComponentDescription().getNamingMode(), classConfigurations, componentConfiguration.getComponentName(), dependencies);
+            processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, componentConfiguration.getComponentDescription().getNamingMode() != ComponentNamingMode.CREATE, classConfigurations, componentConfiguration.getComponentName(), dependencies);
         }
-
+        // 2. other module classes
+        final Set<Class<?>> classConfigurations = new HashSet<>();
+        for (EEModuleClassDescription classDescription : eeModuleDescription.getClassDescriptions()) {
+            if (!handledClasses.contains(classDescription.getClassName())) {
+                try {
+                    final ClassIndex moduleClass = classIndex.classIndex(classDescription.getClassName());
+                    classConfigurations.add(moduleClass.getModuleClass());
+                } catch (ClassNotFoundException e) {
+                    throw EeLogger.ROOT_LOGGER.cannotLoadModuleClass(e, classDescription.getClassName(), moduleConfiguration.getModuleName());
+                }
+            }
+        }
+        processClassConfigurations(phaseContext, applicationClasses, moduleConfiguration, deploymentDescriptorBindings, handledClasses, DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit), classConfigurations, null, dependencies);
     }
 
-    private void processClassConfigurations(final DeploymentPhaseContext phaseContext, final EEApplicationClasses applicationClasses, final EEModuleConfiguration moduleConfiguration, final Map<ServiceName, BindingConfiguration> deploymentDescriptorBindings, final Set<String> handledClasses, final ComponentNamingMode namingMode, final Set<Class<?>> classes, final String componentName, final List<ServiceName> dependencies) throws DeploymentUnitProcessingException {
+    private void processClassConfigurations(final DeploymentPhaseContext phaseContext, final EEApplicationClasses applicationClasses, final EEModuleConfiguration moduleConfiguration, final Map<ServiceName, BindingConfiguration> deploymentDescriptorBindings, final Set<String> handledClasses, final boolean compIsModule, final Set<Class<?>> classes, final String componentName, final List<ServiceName> dependencies) throws DeploymentUnitProcessingException {
         for (final Class<?> clazz : classes) {
             new ClassDescriptionTraversal(clazz, applicationClasses) {
                 @Override
@@ -155,7 +167,11 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                         return;
                     }
                     if (classDescription.isInvalid()) {
-                        throw EeLogger.ROOT_LOGGER.componentClassHasErrors(classDescription.getClassName(), componentName, classDescription.getInvalidMessage());
+                        if (componentName != null) {
+                            throw EeLogger.ROOT_LOGGER.componentClassHasErrors(classDescription.getClassName(), componentName, classDescription.getInvalidMessage());
+                        } else {
+                            throw EeLogger.ROOT_LOGGER.moduleClassHasErrors(classDescription.getClassName(), moduleConfiguration.getModuleName(), classDescription.getInvalidMessage());
+                        }
                     }
                     //only process classes once
                     if (handledClasses.contains(classDescription.getClassName())) {
@@ -169,7 +185,7 @@ public class ModuleJndiBindingProcessor implements DeploymentUnitProcessor {
                         for (BindingConfiguration binding : classLevelBindings) {
                             final String bindingName = binding.getName();
                             final boolean compBinding = bindingName.startsWith("java:comp") || !bindingName.startsWith("java:");
-                            if (namingMode == ComponentNamingMode.CREATE && compBinding) {
+                            if (!compIsModule && compBinding) {
                                 //components with their own comp context do their own binding
                                 continue;
                             }
