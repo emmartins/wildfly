@@ -22,11 +22,14 @@
 
 package org.wildfly.extension.messaging.activemq.deployment.injection;
 
+import org.jboss.as.naming.context.NamespaceContextSelector;
+
 import static org.wildfly.extension.messaging.activemq.logging.MessagingLogger.ROOT_LOGGER;
 
 import java.io.Serializable;
 import java.util.UUID;
 
+import javax.annotation.Resource;
 import javax.enterprise.inject.Instance;
 import javax.enterprise.inject.spi.InjectionPoint;
 import javax.inject.Inject;
@@ -46,7 +49,7 @@ import javax.transaction.TransactionSynchronizationRegistry;
  */
 class InjectedJMSContext extends JMSContextWrapper implements Serializable {
 
-    private static final String TRANSACTION_SYNCHRONIZATION_REGISTRY_LOOKUP = "java:comp/TransactionSynchronizationRegistry";
+    private static final String TRANSACTION_SYNCHRONIZATION_REGISTRY_LOOKUP = "java:jboss/TransactionSynchronizationRegistry";
 
     // Metadata to create the actual JMSContext.
     private final JMSInfo info;
@@ -63,6 +66,9 @@ class InjectedJMSContext extends JMSContextWrapper implements Serializable {
     private transient ConnectionFactory connectionFactory;
     // Cached reference to the transaction sync registry to determine if a transaction is active
     private transient TransactionSynchronizationRegistry transactionSynchronizationRegistry;
+
+    @Resource private TransactionSynchronizationRegistry tsr;
+    @Resource private ConnectionFactory cf;
 
     @Inject
     InjectedJMSContext(InjectionPoint ip, RequestedJMSContext requestedJMSContext, Instance<TransactedJMSContext> transactedJMSContext) {
@@ -104,12 +110,15 @@ class InjectedJMSContext extends JMSContextWrapper implements Serializable {
      * lookup the transactionSynchronizationRegistry and cache it.
      */
     private TransactionSynchronizationRegistry getTransactionSynchronizationRegistry() {
+        /*
         TransactionSynchronizationRegistry cachedTSR = transactionSynchronizationRegistry;
         if (cachedTSR == null) {
             cachedTSR = (TransactionSynchronizationRegistry) lookup(TRANSACTION_SYNCHRONIZATION_REGISTRY_LOOKUP);
             transactionSynchronizationRegistry = cachedTSR;
         }
         return cachedTSR;
+        */
+        return tsr;
     }
 
     /**
@@ -117,15 +126,20 @@ class InjectedJMSContext extends JMSContextWrapper implements Serializable {
      */
     private ConnectionFactory getConnectionFactory() {
         ConnectionFactory cachedCF = connectionFactory;
-
         if (cachedCF == null) {
-            cachedCF = (ConnectionFactory)lookup(info.getConnectionFactoryLookup());
+            String connectionFactoryJndiName = info.getConnectionFactoryLookup();
+            if (connectionFactoryJndiName != null) {
+                cachedCF = (ConnectionFactory)lookup(connectionFactoryJndiName);
+            } else {
+                cachedCF = cf;
+            }
             connectionFactory = cachedCF;
         }
         return cachedCF;
     }
 
     private Object lookup(String name) {
+        System.out.println(String.valueOf(NamespaceContextSelector.getCurrentSelector()));
         Context ctx = null;
         try {
             ctx = new InitialContext();

@@ -29,7 +29,7 @@ import javax.jms.JMSPasswordCredential;
 import javax.jms.JMSSessionMode;
 
 import org.jboss.metadata.property.PropertyReplacer;
-import org.wildfly.extension.messaging.activemq.deployment.DefaultJMSConnectionFactoryBindingProcessor;
+//import org.wildfly.extension.messaging.activemq.deployment.DefaultJMSConnectionFactoryBindingProcessor;
 
 /**
  * Data structure containing the JMS information that can be annotated on an injected JMSContext.
@@ -48,7 +48,7 @@ class JMSInfo {
         if (connectionFactory != null) {
             connectionFactoryLookup = propertyReplacer.replaceProperties(connectionFactory.value());
         } else {
-            connectionFactoryLookup = DefaultJMSConnectionFactoryBindingProcessor.COMP_DEFAULT_JMS_CONNECTION_FACTORY;
+            connectionFactoryLookup = null;
         }
         if (credential != null) {
             userName = propertyReplacer.replaceProperties(credential.userName());

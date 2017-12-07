@@ -66,6 +66,7 @@ public class DefaultJMSConnectionFactoryBindingProcessor implements DeploymentUn
         if (DeploymentTypeMarker.isType(WAR, deploymentUnit)) {
             moduleDescription.getBindingConfigurations().add(new BindingConfiguration(MODULE_DEFAULT_JMS_CONNECTION_FACTORY, injectionSource));
         } else {
+            moduleDescription.getBindingConfigurations().add(new BindingConfiguration(MODULE_DEFAULT_JMS_CONNECTION_FACTORY, injectionSource));
             if (DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
                 moduleDescription.getBindingConfigurations().add(new BindingConfiguration(COMP_DEFAULT_JMS_CONNECTION_FACTORY, injectionSource));
             }
