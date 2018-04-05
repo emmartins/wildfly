@@ -21,25 +21,6 @@
 */
 package org.jboss.as.web.test;
 
-import static org.jboss.as.controller.capability.RuntimeCapability.buildDynamicCapabilityName;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.AUTHENTICATION;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.CORE_SERVICE;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.EXTENSION;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.MANAGEMENT;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.OP_ADDR;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SECURITY_REALM;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.SUBSYSTEM;
-import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.TRUSTSTORE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-
-import java.io.File;
-import java.util.HashMap;
-import java.util.Map;
-
 import io.undertow.predicate.PredicateParser;
 import io.undertow.server.handlers.builder.PredicatedHandlersParser;
 import org.jboss.as.controller.OperationContext;
@@ -63,7 +44,6 @@ import org.jboss.as.controller.registry.ManagementResourceRegistration;
 import org.jboss.as.controller.registry.Resource;
 import org.jboss.as.domain.management.CoreManagementResourceDefinition;
 import org.jboss.as.domain.management.audit.EnvironmentNameReader;
-import org.jboss.as.domain.management.security.KeystoreAttributes;
 import org.jboss.as.network.SocketBinding;
 import org.jboss.as.subsystem.test.AbstractSubsystemTest;
 import org.jboss.as.subsystem.test.AdditionalInitialization;
@@ -72,9 +52,18 @@ import org.jboss.as.subsystem.test.KernelServices;
 import org.jboss.as.web.WebExtension;
 import org.jboss.dmr.ModelNode;
 import org.junit.Test;
+import org.wildfly.extension.elytron.ElytronExtension;
 import org.wildfly.extension.io.IOExtension;
 import org.wildfly.extension.undertow.Constants;
 import org.wildfly.extension.undertow.UndertowExtension;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.jboss.as.controller.capability.RuntimeCapability.buildDynamicCapabilityName;
+import static org.jboss.as.controller.descriptions.ModelDescriptionConstants.*;
+import static org.junit.Assert.*;
 
 /**
  * @author Stuart Douglas
@@ -110,11 +99,13 @@ public class WebMigrateTestCase extends AbstractSubsystemTest {
         assertFalse(model.get(SUBSYSTEM, WebExtension.SUBSYSTEM_NAME).isDefined());
         assertTrue(model.get(SUBSYSTEM, UNDERTOW_SUBSYSTEM_NAME).isDefined());
 
-        //make sure we have an IO subsystem
+        //make sure we have an IO and Elytron subsystem
         ModelNode ioSubsystem = model.get(SUBSYSTEM, "io");
         assertTrue(ioSubsystem.isDefined());
         assertTrue(ioSubsystem.get("worker", "default").isDefined());
         assertTrue(ioSubsystem.get("buffer-pool", "default").isDefined());
+        ModelNode elytronSubsystem = model.get(SUBSYSTEM, "elytron");
+        assertTrue(elytronSubsystem.isDefined());
 
         ModelNode newSubsystem = model.get(SUBSYSTEM, UNDERTOW_SUBSYSTEM_NAME);
         ModelNode newServer = newSubsystem.get("server", "default-server");
@@ -155,17 +146,47 @@ public class WebMigrateTestCase extends AbstractSubsystemTest {
 
         //https connector
         ModelNode httpsConnector = newServer.get(Constants.HTTPS_LISTENER, "https");
-        String realmName = httpsConnector.get(Constants.SECURITY_REALM).asString();
-        assertTrue(realmName, realmName.startsWith("jbossweb-migration-security-realm"));
-        assertEquals("${prop.session-cache-size:512}", httpsConnector.get(Constants.SSL_SESSION_CACHE_SIZE).asString());
-        assertEquals("REQUESTED", httpsConnector.get(Constants.VERIFY_CLIENT).asString());
+        String sslContextName = httpsConnector.get(Constants.SSL_CONTEXT).asString();
+        assertTrue(sslContextName, sslContextName.equals("jbossweb-migrated-connector-https-server-ssl-context"));
 
-        //realm name is dynamic
-        ModelNode realm = model.get(CORE_SERVICE, MANAGEMENT).get(SECURITY_REALM, realmName);
+        // elytron server-ssl-context
+        final ModelNode sslContext = elytronSubsystem.get("server-ssl-context", sslContextName);
+        assertTrue(sslContext.isDefined());
+        final ModelNode maximumSessionCacheSize = sslContext.get("maximum-session-cache-size");
+        assertTrue(maximumSessionCacheSize.isDefined() && maximumSessionCacheSize.asString().equals("${prop.session-cache-size:512}"));
+        final ModelNode wantClientAuth = sslContext.get("want-client-auth");
+        assertTrue(wantClientAuth.isDefined() && wantClientAuth.asBoolean());
+        final ModelNode needClientAuth = sslContext.get("need-client-auth");
+        assertTrue(needClientAuth.isDefined() && !needClientAuth.asBoolean());
+        final ModelNode sslContextKeyManager = sslContext.get("key-manager");
+        assertTrue(sslContextKeyManager.isDefined());
+        final ModelNode sslContextTrustManager = sslContext.get("trust-manager");
+        assertTrue(sslContextTrustManager.isDefined());
 
-        //trust store
-        ModelNode trustStore = realm.get(AUTHENTICATION, TRUSTSTORE);
-        assertEquals("${file-base}/jsse.keystore", trustStore.get(KeystoreAttributes.KEYSTORE_PATH.getName()).asString());
+        // elytron key-manager
+        final ModelNode  keyManager = elytronSubsystem.get("key-manager", sslContextKeyManager.asString());
+        assertTrue(keyManager.isDefined());
+        final ModelNode keyManagerKeyStore = keyManager.get("key-store");
+        assertTrue(keyManagerKeyStore.isDefined());
+
+        // elytron key-store
+        final ModelNode keyStore = elytronSubsystem.get("key-store", keyManagerKeyStore.asString());
+        assertTrue(keyStore.isDefined());
+        final ModelNode keyStorePath = keyStore.get("path");
+        assertTrue(keyStorePath.isDefined() && keyStorePath.asString().equals("${file-base}/server.keystore"));
+
+        // elytron trust-manager
+        final ModelNode trustManager = elytronSubsystem.get("trust-manager", sslContextTrustManager.asString());
+        assertTrue(trustManager.isDefined());
+        final ModelNode trustManagerKeyStore = trustManager.get("key-store");
+        assertTrue(trustManagerKeyStore.isDefined());
+
+        // elytron trust-store
+        final ModelNode trustStore = elytronSubsystem.get("key-store", trustManagerKeyStore.asString());
+        assertTrue(trustStore.isDefined());
+        final ModelNode trustStorePath = trustStore.get("path");
+        assertTrue(trustStorePath.isDefined() && trustStorePath.asString().equals("${file-base}/jsse.keystore"));
+
         //Valves
         ModelNode filters = newSubsystem.get(Constants.CONFIGURATION, Constants.FILTER);
         ModelNode dumpFilter = filters.get("expression-filter", "request-dumper");
@@ -256,6 +277,7 @@ public class WebMigrateTestCase extends AbstractSubsystemTest {
 
         UndertowExtension undertow = new UndertowExtension();
         IOExtension io = new IOExtension();
+        ElytronExtension elytron = new ElytronExtension();
         boolean extensionAdded = false;
 
         @Override
@@ -280,6 +302,8 @@ public class WebMigrateTestCase extends AbstractSubsystemTest {
                         undertow.initialize(extensionRegistry.getExtensionContext("org.wildfly.extension.undertow",
                                 rootRegistration, ExtensionRegistryType.SERVER));
                         io.initialize(extensionRegistry.getExtensionContext("org.wildfly.extension.io",
+                                rootRegistration, ExtensionRegistryType.SERVER));
+                        elytron.initialize(extensionRegistry.getExtensionContext("org.wildfly.extension.elytron",
                                 rootRegistration, ExtensionRegistryType.SERVER));
                     }
                 }

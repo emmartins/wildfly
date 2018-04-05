@@ -46,4 +46,7 @@ public interface WebLogger extends BasicLogger {
 
     @Message(id = 9, value = "Could not migrate attribute %s from valve %s")
     String couldNotMigrateValveAttribute(String attribute, String valveName);
+
+    @Message(id = 10, value = "Could not migrate SSL protocol %s, unsupported by Elytron SSL context")
+    String couldNotMigrateSslProtocol(String s);
 }
