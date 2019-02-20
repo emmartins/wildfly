@@ -38,6 +38,8 @@ import javax.naming.NamingException;
 
 import org.jboss.logging.Logger;
 
+import static java.lang.Thread.currentThread;
+
 /**
  * @author Eduardo Martins
  */
@@ -60,10 +62,13 @@ public class DefaultContextServiceTestEJB {
      * @return
      * @throws javax.naming.NamingException
      */
-    public Future<?> submit(TestEJBRunnable task) throws NamingException {
+    public Future<?> submit(org.jboss.as.test.integration.ee.concurrent.TestEJBRunnable task) throws NamingException {
         final Principal principal = ejbContext.getCallerPrincipal();
         logger.debugf("Principal: %s", principal);
         task.setExpectedPrincipal(principal);
+        final Runnable r = () -> {};
+        //contextService.createContextualProxy(r,Runnable.class).run();
+        logger.info(currentThread().getContextClassLoader().toString());
         final ExecutorService executorService = Executors.newSingleThreadExecutor();
         try {
             return executorService.submit(contextService.createContextualProxy(task,Runnable.class));
