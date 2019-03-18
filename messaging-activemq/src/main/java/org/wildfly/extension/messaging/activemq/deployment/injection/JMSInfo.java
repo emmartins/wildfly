@@ -48,7 +48,7 @@ class JMSInfo {
         if (connectionFactory != null) {
             connectionFactoryLookup = propertyReplacer.replaceProperties(connectionFactory.value());
         } else {
-            connectionFactoryLookup = DefaultJMSConnectionFactoryBindingProcessor.COMP_DEFAULT_JMS_CONNECTION_FACTORY;
+            connectionFactoryLookup = "java:comp/" + DefaultJMSConnectionFactoryBindingProcessor.DEFAULT_JMS_CONNECTION_FACTORY;
         }
         if (credential != null) {
             userName = propertyReplacer.replaceProperties(credential.userName());
