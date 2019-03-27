@@ -27,15 +27,13 @@ import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.ComponentNamingMode;
 import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.component.LookupInjectionSource;
-import org.jboss.as.ee.structure.DeploymentType;
+import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
-import org.jboss.as.server.deployment.EjbDeploymentMarker;
 
-import static org.jboss.as.ee.structure.DeploymentType.APPLICATION_CLIENT;
-import static org.jboss.as.ee.structure.DeploymentType.WAR;
+import static org.jboss.as.ee.structure.DeploymentType.*;
 
 /**
  * Foundation for processors which binds EE platform common resources, to all EE module and comp naming contexts.
@@ -49,6 +47,9 @@ public abstract class AbstractPlatformBindingProcessor implements DeploymentUnit
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
         final EEModuleDescription moduleDescription = deploymentUnit.getAttachment(Attachments.EE_MODULE_DESCRIPTION);
         if(moduleDescription == null) {
+            return;
+        }
+        if (DeploymentTypeMarker.isType(EAR, deploymentUnit)) {
             return;
         }
         addBindings(deploymentUnit, moduleDescription);
@@ -69,16 +70,23 @@ public abstract class AbstractPlatformBindingProcessor implements DeploymentUnit
      */
     protected void addBinding(final String source, String target, DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final LookupInjectionSource injectionSource = new LookupInjectionSource(source);
-        final DeploymentType deploymentType = deploymentUnit.getAttachment(org.jboss.as.ee.structure.Attachments.DEPLOYMENT_TYPE);
-        if (deploymentType == WAR || deploymentType == APPLICATION_CLIENT || EjbDeploymentMarker.isEjbDeployment(deploymentUnit)) {
-            final String moduleTarget = target.startsWith("java:comp") ? "java:module"+target.substring("java:comp".length()) : target;
+        final String moduleTarget = target.startsWith("java:comp") ? "java:module"+target.substring("java:comp".length()) : target;
+        if (DeploymentTypeMarker.isType(WAR, deploymentUnit)) {
             moduleDescription.getBindingConfigurations().add(new BindingConfiguration(moduleTarget, injectionSource));
-            System.out.println("Added module binding "+target+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
-        }
-        for(ComponentDescription componentDescription : moduleDescription.getComponentDescriptions()) {
-            if(componentDescription.getNamingMode() == ComponentNamingMode.CREATE) {
-                componentDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
-                System.out.println("Added comp binding "+target+" to EE component "+componentDescription.getApplicationName() + ":"+componentDescription.getModuleName()+":"+componentDescription.getComponentName());
+            System.out.println("Added module binding "+moduleTarget+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
+        } else {
+            if (DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
+                moduleDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
+                System.out.println("Added module binding "+target+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
+            } else {
+                moduleDescription.getBindingConfigurations().add(new BindingConfiguration(moduleTarget, injectionSource));
+                System.out.println("Added module binding "+moduleTarget+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
+            }
+            for(ComponentDescription componentDescription : moduleDescription.getComponentDescriptions()) {
+                if(componentDescription.getNamingMode() == ComponentNamingMode.CREATE) {
+                    componentDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
+                    System.out.println("Added comp binding "+target+" to EE component "+componentDescription.getApplicationName() + ":"+componentDescription.getModuleName()+":"+componentDescription.getComponentName());
+                }
             }
         }
     }

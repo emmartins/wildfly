@@ -25,7 +25,7 @@ import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.ComponentNamingMode;
 import org.jboss.as.ee.component.EEModuleDescription;
-import org.jboss.as.ee.structure.DeploymentType;
+import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.naming.ManagedReferenceInjector;
 import org.jboss.as.naming.ServiceBasedNamingStore;
 import org.jboss.as.naming.deployment.ContextNames;
@@ -34,7 +34,6 @@ import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
-import org.jboss.as.server.deployment.EjbDeploymentMarker;
 import org.jboss.as.txn.service.TransactionSynchronizationRegistryService;
 import org.jboss.as.txn.service.UserTransactionAccessControlService;
 import org.jboss.as.txn.service.UserTransactionBindingService;
@@ -45,8 +44,7 @@ import org.jboss.msc.service.ServiceTarget;
 import javax.transaction.TransactionSynchronizationRegistry;
 import javax.transaction.UserTransaction;
 
-import static org.jboss.as.ee.structure.DeploymentType.APPLICATION_CLIENT;
-import static org.jboss.as.ee.structure.DeploymentType.WAR;
+import static org.jboss.as.ee.structure.DeploymentType.EAR;
 
 /**
  * Processor responsible for binding transaction related resources to JNDI.
@@ -64,13 +62,13 @@ public class TransactionJndiBindingProcessor implements DeploymentUnitProcessor 
         if(moduleDescription == null) {
             return;
         }
-        final DeploymentType deploymentType = deploymentUnit.getAttachment(org.jboss.as.ee.structure.Attachments.DEPLOYMENT_TYPE);
-        if (deploymentType == WAR || deploymentType == APPLICATION_CLIENT || EjbDeploymentMarker.isEjbDeployment(deploymentUnit)) {
-            // bind to module
-            final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(),moduleDescription.getModuleName());
-            bindServices(deploymentUnit, phaseContext.getServiceTarget(), moduleContextServiceName);
+        if (DeploymentTypeMarker.isType(EAR, deploymentUnit)) {
+            return;
         }
-        // bind to each component
+        // bind to java:module
+        final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(),moduleDescription.getModuleName());
+        bindServices(deploymentUnit, phaseContext.getServiceTarget(), moduleContextServiceName);
+        // bind to each component with a java:comp namespace
         for(ComponentDescription component : moduleDescription.getComponentDescriptions()) {
             if(component.getNamingMode() == ComponentNamingMode.CREATE) {
                 final ServiceName compContextServiceName = ContextNames.contextServiceNameOfComponent(moduleDescription.getApplicationName(),moduleDescription.getModuleName(),component.getComponentName());
