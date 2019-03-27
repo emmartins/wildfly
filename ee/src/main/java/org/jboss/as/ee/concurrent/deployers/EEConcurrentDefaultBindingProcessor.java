@@ -41,19 +41,19 @@ public class EEConcurrentDefaultBindingProcessor extends AbstractPlatformBinding
     protected void addBindings(DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final String contextService = moduleDescription.getDefaultResourceJndiNames().getContextService();
         if(contextService != null) {
-            addBinding(contextService, COMP_DEFAULT_CONTEXT_SERVICE_JNDI_NAME, moduleDescription);
+            addBinding(contextService, COMP_DEFAULT_CONTEXT_SERVICE_JNDI_NAME, deploymentUnit, moduleDescription);
         }
         final String managedExecutorService = moduleDescription.getDefaultResourceJndiNames().getManagedExecutorService();
         if(managedExecutorService != null) {
-            addBinding(managedExecutorService, COMP_DEFAULT_MANAGED_EXECUTOR_SERVICE_JNDI_NAME, moduleDescription);
+            addBinding(managedExecutorService, COMP_DEFAULT_MANAGED_EXECUTOR_SERVICE_JNDI_NAME, deploymentUnit, moduleDescription);
         }
         final String managedScheduledExecutorService = moduleDescription.getDefaultResourceJndiNames().getManagedScheduledExecutorService();
         if(managedScheduledExecutorService != null) {
-            addBinding(managedScheduledExecutorService, COMP_DEFAULT_MANAGED_SCHEDULED_EXECUTOR_SERVICE_JNDI_NAME, moduleDescription);
+            addBinding(managedScheduledExecutorService, COMP_DEFAULT_MANAGED_SCHEDULED_EXECUTOR_SERVICE_JNDI_NAME, deploymentUnit, moduleDescription);
         }
         final String managedThreadFactory = moduleDescription.getDefaultResourceJndiNames().getManagedThreadFactory();
         if(managedThreadFactory != null) {
-            addBinding(managedThreadFactory, COMP_DEFAULT_MANAGED_THREAD_FACTORY_JNDI_NAME, moduleDescription);
+            addBinding(managedThreadFactory, COMP_DEFAULT_MANAGED_THREAD_FACTORY_JNDI_NAME, deploymentUnit, moduleDescription);
         }
     }
 }

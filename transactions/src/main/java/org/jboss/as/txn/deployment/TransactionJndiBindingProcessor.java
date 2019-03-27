@@ -21,15 +21,11 @@
  */
 package org.jboss.as.txn.deployment;
 
-import javax.transaction.TransactionSynchronizationRegistry;
-import javax.transaction.UserTransaction;
-
 import org.jboss.as.ee.component.Attachments;
 import org.jboss.as.ee.component.ComponentDescription;
 import org.jboss.as.ee.component.ComponentNamingMode;
 import org.jboss.as.ee.component.EEModuleDescription;
 import org.jboss.as.ee.structure.DeploymentType;
-import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.naming.ManagedReferenceInjector;
 import org.jboss.as.naming.ServiceBasedNamingStore;
 import org.jboss.as.naming.deployment.ContextNames;
@@ -38,12 +34,19 @@ import org.jboss.as.server.deployment.DeploymentPhaseContext;
 import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
+import org.jboss.as.server.deployment.EjbDeploymentMarker;
 import org.jboss.as.txn.service.TransactionSynchronizationRegistryService;
-import org.jboss.as.txn.service.UserTransactionBindingService;
 import org.jboss.as.txn.service.UserTransactionAccessControlService;
+import org.jboss.as.txn.service.UserTransactionBindingService;
 import org.jboss.as.txn.service.UserTransactionService;
 import org.jboss.msc.service.ServiceName;
 import org.jboss.msc.service.ServiceTarget;
+
+import javax.transaction.TransactionSynchronizationRegistry;
+import javax.transaction.UserTransaction;
+
+import static org.jboss.as.ee.structure.DeploymentType.APPLICATION_CLIENT;
+import static org.jboss.as.ee.structure.DeploymentType.WAR;
 
 /**
  * Processor responsible for binding transaction related resources to JNDI.
@@ -57,23 +60,21 @@ public class TransactionJndiBindingProcessor implements DeploymentUnitProcessor 
     @Override
     public void deploy(DeploymentPhaseContext phaseContext) throws DeploymentUnitProcessingException {
         final DeploymentUnit deploymentUnit = phaseContext.getDeploymentUnit();
-        if(DeploymentTypeMarker.isType(DeploymentType.EAR,deploymentUnit)) {
-            return;
-        }
         final EEModuleDescription moduleDescription = deploymentUnit.getAttachment(Attachments.EE_MODULE_DESCRIPTION);
         if(moduleDescription == null) {
             return;
         }
-
-        final ServiceTarget serviceTarget = phaseContext.getServiceTarget();
-        // bind to module
-        final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(),moduleDescription.getModuleName());
-        bindServices(deploymentUnit, serviceTarget, moduleContextServiceName);
+        final DeploymentType deploymentType = deploymentUnit.getAttachment(org.jboss.as.ee.structure.Attachments.DEPLOYMENT_TYPE);
+        if (deploymentType == WAR || deploymentType == APPLICATION_CLIENT || EjbDeploymentMarker.isEjbDeployment(deploymentUnit)) {
+            // bind to module
+            final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(),moduleDescription.getModuleName());
+            bindServices(deploymentUnit, phaseContext.getServiceTarget(), moduleContextServiceName);
+        }
         // bind to each component
         for(ComponentDescription component : moduleDescription.getComponentDescriptions()) {
             if(component.getNamingMode() == ComponentNamingMode.CREATE) {
                 final ServiceName compContextServiceName = ContextNames.contextServiceNameOfComponent(moduleDescription.getApplicationName(),moduleDescription.getModuleName(),component.getComponentName());
-                bindServices(deploymentUnit, serviceTarget, compContextServiceName);
+                bindServices(deploymentUnit, phaseContext.getServiceTarget(), compContextServiceName);
             }
         }
     }

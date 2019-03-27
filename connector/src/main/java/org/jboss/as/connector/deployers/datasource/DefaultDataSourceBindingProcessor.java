@@ -38,7 +38,7 @@ public class DefaultDataSourceBindingProcessor extends AbstractPlatformBindingPr
     protected void addBindings(DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final String defaultDataSource = moduleDescription.getDefaultResourceJndiNames().getDataSource();
         if(defaultDataSource != null) {
-            addBinding(defaultDataSource, COMP_DEFAULT_DATASOURCE_JNDI_NAME, moduleDescription);
+            addBinding(defaultDataSource, COMP_DEFAULT_DATASOURCE_JNDI_NAME, deploymentUnit, moduleDescription);
         }
     }
 }

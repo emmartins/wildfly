@@ -39,7 +39,7 @@ public class DefaultJMSConnectionFactoryBindingProcessor extends AbstractPlatfor
     protected void addBindings(DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final String defaultJMSConnectionFactory = moduleDescription.getDefaultResourceJndiNames().getJmsConnectionFactory();
         if(defaultJMSConnectionFactory != null) {
-            addBinding(defaultJMSConnectionFactory, COMP_DEFAULT_JMS_CONNECTION_FACTORY, moduleDescription);
+            addBinding(defaultJMSConnectionFactory, COMP_DEFAULT_JMS_CONNECTION_FACTORY, deploymentUnit, moduleDescription);
         }
     }
 }
