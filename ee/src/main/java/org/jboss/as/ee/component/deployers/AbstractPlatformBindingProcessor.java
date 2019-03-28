@@ -34,6 +34,7 @@ import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 
 import static org.jboss.as.ee.structure.DeploymentType.EAR;
+import static org.jboss.as.ee.structure.DeploymentType.WAR;
 
 /**
  * Foundation for processors which binds EE platform common resources, to all EE module and comp naming contexts.
@@ -56,7 +57,7 @@ public abstract class AbstractPlatformBindingProcessor implements DeploymentUnit
     }
 
     /**
-     * Concrete implementations should use this method to add bindings to the module description, through {@link #addBinding(String, String, EEModuleDescription)}
+     * Concrete implementations should use this method to add bindings to the module description, through {@link #addBinding(String, String, DeploymentUnit, EEModuleDescription)}
      * @param deploymentUnit
      * @param moduleDescription
      */
@@ -65,15 +66,18 @@ public abstract class AbstractPlatformBindingProcessor implements DeploymentUnit
     /**
      *
      * @param source
-     * @param target
+     * @param target target jndi name, relative to namespace root, e.g. for java:comp/DefaultDataSource the target param value should be DefaultDataSource
      * @param moduleDescription
      */
-    protected void addBinding(String source, String target, EEModuleDescription moduleDescription) {
+    protected void addBinding(String source, String target, DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final LookupInjectionSource injectionSource = new LookupInjectionSource(source);
-        moduleDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
-        for(ComponentDescription componentDescription : moduleDescription.getComponentDescriptions()) {
-            if(componentDescription.getNamingMode() == ComponentNamingMode.CREATE) {
-                componentDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
+        moduleDescription.getBindingConfigurations().add(new BindingConfiguration("java:module/"+target, injectionSource));
+        if (!DeploymentTypeMarker.isType(WAR, deploymentUnit)) {
+            final String compTarget = "java:comp/" + target;
+            for (ComponentDescription componentDescription : moduleDescription.getComponentDescriptions()) {
+                if (componentDescription.getNamingMode() == ComponentNamingMode.CREATE) {
+                    componentDescription.getBindingConfigurations().add(new BindingConfiguration(compTarget, injectionSource));
+                }
             }
         }
     }

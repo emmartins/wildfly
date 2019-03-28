@@ -32,13 +32,15 @@ import org.jboss.as.server.deployment.DeploymentUnit;
  */
 public class DefaultDataSourceBindingProcessor extends AbstractPlatformBindingProcessor {
 
-    public static final String COMP_DEFAULT_DATASOURCE_JNDI_NAME = "java:comp/DefaultDataSource";
+    public static final String DEFAULT_DATASOURCE_JNDI_NAME = "DefaultDataSource";
+
+    public static final String COMP_DEFAULT_DATASOURCE_JNDI_NAME = "java:comp/"+DEFAULT_DATASOURCE_JNDI_NAME;
 
     @Override
     protected void addBindings(DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final String defaultDataSource = moduleDescription.getDefaultResourceJndiNames().getDataSource();
         if(defaultDataSource != null) {
-            addBinding(defaultDataSource, COMP_DEFAULT_DATASOURCE_JNDI_NAME, moduleDescription);
+            addBinding(defaultDataSource, DEFAULT_DATASOURCE_JNDI_NAME, deploymentUnit, moduleDescription);
         }
     }
 }
