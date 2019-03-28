@@ -73,15 +73,19 @@ public abstract class AbstractPlatformBindingProcessor implements DeploymentUnit
         final String moduleTarget = target.startsWith("java:comp") ? "java:module"+target.substring("java:comp".length()) : target;
         if (DeploymentTypeMarker.isType(WAR, deploymentUnit)) {
             moduleDescription.getBindingConfigurations().add(new BindingConfiguration(moduleTarget, injectionSource));
+            System.out.println("Added module binding "+moduleTarget+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
         } else {
             if (DeploymentTypeMarker.isType(APPLICATION_CLIENT, deploymentUnit)) {
                 moduleDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
+                System.out.println("Added module binding "+target+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
             } else {
                 moduleDescription.getBindingConfigurations().add(new BindingConfiguration(moduleTarget, injectionSource));
+                System.out.println("Added module binding "+moduleTarget+" to EE module "+moduleDescription.getApplicationName() + ":"+moduleDescription.getModuleName());
             }
             for(ComponentDescription componentDescription : moduleDescription.getComponentDescriptions()) {
                 if(componentDescription.getNamingMode() == ComponentNamingMode.CREATE) {
                     componentDescription.getBindingConfigurations().add(new BindingConfiguration(target, injectionSource));
+                    System.out.println("Added comp binding "+target+" to EE component "+componentDescription.getApplicationName() + ":"+componentDescription.getModuleName()+":"+componentDescription.getComponentName());
                 }
             }
         }
