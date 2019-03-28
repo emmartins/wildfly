@@ -68,13 +68,11 @@ public class TransactionJndiBindingProcessor implements DeploymentUnitProcessor 
         // bind to module
         final ServiceName moduleContextServiceName = ContextNames.contextServiceNameOfModule(moduleDescription.getApplicationName(),moduleDescription.getModuleName());
         bindServices(deploymentUnit, serviceTarget, moduleContextServiceName);
-        if (!DeploymentTypeMarker.isType(DeploymentType.WAR, deploymentUnit)) {
-            // bind to each component
-            for(ComponentDescription component : moduleDescription.getComponentDescriptions()) {
-                if(component.getNamingMode() == ComponentNamingMode.CREATE) {
-                    final ServiceName compContextServiceName = ContextNames.contextServiceNameOfComponent(moduleDescription.getApplicationName(),moduleDescription.getModuleName(),component.getComponentName());
-                    bindServices(deploymentUnit, serviceTarget, compContextServiceName);
-                }
+        // bind to each component
+        for(ComponentDescription component : moduleDescription.getComponentDescriptions()) {
+            if(component.getNamingMode() == ComponentNamingMode.CREATE) {
+                final ServiceName compContextServiceName = ContextNames.contextServiceNameOfComponent(moduleDescription.getApplicationName(),moduleDescription.getModuleName(),component.getComponentName());
+                bindServices(deploymentUnit, serviceTarget, compContextServiceName);
             }
         }
     }
