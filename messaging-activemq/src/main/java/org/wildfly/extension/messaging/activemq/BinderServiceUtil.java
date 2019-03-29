@@ -106,6 +106,7 @@ public class BinderServiceUtil {
         sb.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, aliasBinderService.getNamingStoreInjector());
         sb.requires(bindInfo.getBinderServiceName());
         sb.addListener(new LifecycleListener() {
+                    private boolean init;
                     @Override
                     public void handleEvent(ServiceController<?> controller, LifecycleEvent event) {
                         switch (event) {
@@ -114,7 +115,11 @@ public class BinderServiceUtil {
                                 break;
                             }
                             case DOWN: {
-                                ROOT_LOGGER.unboundJndiName(alias);
+                                if (init) {
+                                    ROOT_LOGGER.unboundJndiName(alias);
+                                } else {
+                                    init = true;
+                                }
                                 break;
                             }
                             case REMOVED: {

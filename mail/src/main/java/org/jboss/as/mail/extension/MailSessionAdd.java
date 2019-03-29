@@ -140,6 +140,8 @@ class MailSessionAdd extends AbstractAddStepHandler {
         final ServiceBuilder<?> binderBuilder = serviceTarget
                 .addService(bindInfo.getBinderServiceName(), binderService)
                 .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector()).addListener(new LifecycleListener() {
+                    private boolean init;
+                    @Override
                     public void handleEvent(final ServiceController<?> controller, final LifecycleEvent event) {
                         switch (event) {
                             case UP: {
@@ -147,7 +149,11 @@ class MailSessionAdd extends AbstractAddStepHandler {
                                 break;
                             }
                             case DOWN: {
-                                MailLogger.ROOT_LOGGER.unboundMailSession(jndiName);
+                                if (init) {
+                                    MailLogger.ROOT_LOGGER.unboundMailSession(jndiName);
+                                } else {
+                                    init = true;
+                                }
                                 break;
                             }
                             case REMOVED: {

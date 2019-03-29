@@ -261,6 +261,7 @@ public class DataSourceDefinitionInjectionSource extends ResourceDefinitionInjec
                 .addService(bindInfo.getBinderServiceName(), binderService)
                 .addDependency(referenceFactoryServiceName, ManagedReferenceFactory.class, binderService.getManagedObjectInjector())
                 .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, binderService.getNamingStoreInjector()).addListener(new LifecycleListener() {
+                    private boolean init;
                     public void handleEvent(final ServiceController<?> controller, final LifecycleEvent event) {
                         switch (event) {
                             case UP: {
@@ -272,10 +273,14 @@ public class DataSourceDefinitionInjectionSource extends ResourceDefinitionInjec
                                 break;
                             }
                             case DOWN: {
-                                if (isTransactional()) {
-                                    SUBSYSTEM_DATASOURCES_LOGGER.unboundDataSource(jndiName);
+                                if (init) {
+                                    if (isTransactional()) {
+                                        SUBSYSTEM_DATASOURCES_LOGGER.unboundDataSource(jndiName);
+                                    } else {
+                                        SUBSYSTEM_DATASOURCES_LOGGER.unBoundNonJTADataSource(jndiName);
+                                    }
                                 } else {
-                                    SUBSYSTEM_DATASOURCES_LOGGER.unBoundNonJTADataSource(jndiName);
+                                    init = true;
                                 }
                                 break;
                             }

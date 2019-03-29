@@ -100,6 +100,7 @@ public class AdministeredObjectDefinitionInjectionSource extends ResourceDefinit
 
         serviceBuilder.addDependency(AdminObjectReferenceFactoryService.SERVICE_NAME_BASE.append(bindInfo.getBinderServiceName()), ManagedReferenceFactory.class, injector);
         serviceBuilder.addListener(new LifecycleListener() {
+            private boolean init;
             public void handleEvent(final ServiceController<?> controller, final LifecycleEvent event) {
                 switch (event) {
                     case UP: {
@@ -107,7 +108,11 @@ public class AdministeredObjectDefinitionInjectionSource extends ResourceDefinit
                         break;
                     }
                     case DOWN: {
-                        DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("AdminObject", jndiName);
+                        if (init) {
+                            DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("AdminObject", jndiName);
+                        } else {
+                            init = true;
+                        }
                         break;
                     }
                     case REMOVED: {

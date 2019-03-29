@@ -442,6 +442,7 @@ public abstract class AbstractResourceAdapterDeploymentService {
                         .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class,
                                 binderService.getNamingStoreInjector())
                         .addListener(new LifecycleListener() {
+                            private boolean init;
                             public void handleEvent(final ServiceController<? extends Object> controller, final LifecycleEvent event) {
                                 switch (event) {
                                     case UP: {
@@ -449,7 +450,11 @@ public abstract class AbstractResourceAdapterDeploymentService {
                                         break;
                                     }
                                     case DOWN: {
-                                        DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("ConnectionFactory", jndi);
+                                        if (init) {
+                                            DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("ConnectionFactory", jndi);
+                                        } else {
+                                            init = true;
+                                        }
                                         break;
                                     }
                                     case REMOVED: {
@@ -479,6 +484,7 @@ public abstract class AbstractResourceAdapterDeploymentService {
                 sb.addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class, aliasBinderService.getNamingStoreInjector());
                 sb.requires(bindInfo.getBinderServiceName());
                 sb.addListener(new LifecycleListener() {
+                    private boolean init;
                             @Override
                             public void handleEvent(ServiceController<?> controller, LifecycleEvent event) {
                                 switch (event) {
@@ -487,7 +493,11 @@ public abstract class AbstractResourceAdapterDeploymentService {
                                         break;
                                     }
                                     case DOWN: {
-                                        DEPLOYMENT_CONNECTOR_LOGGER.unbindingAlias(bindInfo.getAbsoluteJndiName(), alias);
+                                        if (init) {
+                                            DEPLOYMENT_CONNECTOR_LOGGER.unbindingAlias(bindInfo.getAbsoluteJndiName(), alias);
+                                        } else {
+                                            init = true;
+                                        }
                                         break;
                                     }
                                     case REMOVED: {
@@ -539,7 +549,7 @@ public abstract class AbstractResourceAdapterDeploymentService {
                                 binderService.getManagedObjectInjector())
                         .addDependency(bindInfo.getParentContextServiceName(), ServiceBasedNamingStore.class,
                                 binderService.getNamingStoreInjector()).addListener(new LifecycleListener() {
-
+                    private boolean init;
                     public void handleEvent(final ServiceController<?> controller, final LifecycleEvent event) {
                         switch (event) {
                             case UP: {
@@ -547,7 +557,11 @@ public abstract class AbstractResourceAdapterDeploymentService {
                                 break;
                             }
                             case DOWN: {
-                                DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("AdminObject", jndi);
+                                if (init) {
+                                    DEPLOYMENT_CONNECTOR_LOGGER.unboundJca("AdminObject", jndi);
+                                } else {
+                                    init = true;
+                                }
                                 break;
                             }
                             case REMOVED: {
