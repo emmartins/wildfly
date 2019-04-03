@@ -33,6 +33,8 @@ import org.jboss.as.server.deployment.DeploymentUnit;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 import org.jboss.as.server.deployment.DeploymentUnitProcessor;
 
+import static org.wildfly.extension.messaging.activemq.deployment.DefaultJMSConnectionFactoryBindingProcessor.DEFAULT_JMS_CONNECTION_FACTORY;
+
 /**
  * Processor responsible for adding an EEResourceReferenceProcessor, which defaults @resource ConnectionFactory injection to the default JMS Connection Factory.
  *
@@ -60,7 +62,7 @@ public class DefaultJMSConnectionFactoryResourceReferenceProcessor implements De
     private static class JMSConnectionFactoryResourceReferenceProcessor implements EEResourceReferenceProcessor {
 
         private static final String TYPE = ConnectionFactory.class.getName();
-        private static final InjectionSource INJECTION_SOURCE = new LookupInjectionSource(DefaultJMSConnectionFactoryBindingProcessor.COMP_DEFAULT_JMS_CONNECTION_FACTORY);
+        private static final InjectionSource INJECTION_SOURCE = new LookupInjectionSource("java:comp/" + DEFAULT_JMS_CONNECTION_FACTORY);
 
         @Override
         public String getResourceReferenceType() {

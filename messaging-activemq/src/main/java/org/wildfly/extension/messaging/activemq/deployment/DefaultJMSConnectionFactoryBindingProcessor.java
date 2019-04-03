@@ -33,13 +33,13 @@ import org.jboss.as.server.deployment.DeploymentUnit;
  */
 public class DefaultJMSConnectionFactoryBindingProcessor extends AbstractPlatformBindingProcessor {
 
-    public static final String COMP_DEFAULT_JMS_CONNECTION_FACTORY = "java:comp/DefaultJMSConnectionFactory";
+    public static final String DEFAULT_JMS_CONNECTION_FACTORY = "DefaultJMSConnectionFactory";
 
     @Override
     protected void addBindings(DeploymentUnit deploymentUnit, EEModuleDescription moduleDescription) {
         final String defaultJMSConnectionFactory = moduleDescription.getDefaultResourceJndiNames().getJmsConnectionFactory();
         if(defaultJMSConnectionFactory != null) {
-            addBinding(defaultJMSConnectionFactory, COMP_DEFAULT_JMS_CONNECTION_FACTORY, moduleDescription);
+            addBinding(defaultJMSConnectionFactory, DEFAULT_JMS_CONNECTION_FACTORY, deploymentUnit, moduleDescription);
         }
     }
 }

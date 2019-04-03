@@ -38,6 +38,8 @@ import org.wildfly.extension.messaging.activemq.deployment.DefaultJMSConnectionF
  */
 class JMSInfo {
 
+    private static final String DEFAULT_JMS_CONNECTION_FACTORY_LOOKUP = "java:comp/" + DefaultJMSConnectionFactoryBindingProcessor.DEFAULT_JMS_CONNECTION_FACTORY;
+
     private final String connectionFactoryLookup;
     private final String userName;
     private final String password;
@@ -48,7 +50,7 @@ class JMSInfo {
         if (connectionFactory != null) {
             connectionFactoryLookup = propertyReplacer.replaceProperties(connectionFactory.value());
         } else {
-            connectionFactoryLookup = DefaultJMSConnectionFactoryBindingProcessor.COMP_DEFAULT_JMS_CONNECTION_FACTORY;
+            connectionFactoryLookup = DEFAULT_JMS_CONNECTION_FACTORY_LOOKUP;
         }
         if (credential != null) {
             userName = propertyReplacer.replaceProperties(credential.userName());

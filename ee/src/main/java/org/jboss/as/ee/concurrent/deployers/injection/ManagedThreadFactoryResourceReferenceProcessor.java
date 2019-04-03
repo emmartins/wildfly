@@ -24,10 +24,11 @@ package org.jboss.as.ee.concurrent.deployers.injection;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.component.LookupInjectionSource;
 import org.jboss.as.ee.component.deployers.EEResourceReferenceProcessor;
-import org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
 
 import javax.enterprise.concurrent.ManagedThreadFactory;
+
+import static org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor.DEFAULT_MANAGED_THREAD_FACTORY_JNDI_NAME;
 
 /**
  * @author Eduardo Martins
@@ -35,7 +36,7 @@ import javax.enterprise.concurrent.ManagedThreadFactory;
 public class ManagedThreadFactoryResourceReferenceProcessor implements EEResourceReferenceProcessor {
 
     private static final String TYPE = ManagedThreadFactory.class.getName();
-    private static final LookupInjectionSource injectionSource = new LookupInjectionSource(EEConcurrentDefaultBindingProcessor.COMP_DEFAULT_MANAGED_THREAD_FACTORY_JNDI_NAME);
+    private static final LookupInjectionSource injectionSource = new LookupInjectionSource("java:comp/" + DEFAULT_MANAGED_THREAD_FACTORY_JNDI_NAME);
 
     public static final ManagedThreadFactoryResourceReferenceProcessor INSTANCE = new ManagedThreadFactoryResourceReferenceProcessor();
 
