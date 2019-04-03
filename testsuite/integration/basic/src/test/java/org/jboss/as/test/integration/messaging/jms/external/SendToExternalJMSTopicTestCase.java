@@ -40,7 +40,6 @@ import org.jboss.arquillian.container.test.api.Deployment;
 import org.jboss.arquillian.junit.Arquillian;
 import org.jboss.as.arquillian.api.ServerSetup;
 import org.jboss.as.controller.client.helpers.Operations;
-import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
 import org.jboss.as.test.integration.common.jms.JMSOperations;
 import org.jboss.as.test.integration.common.jms.JMSOperationsProvider;
 import org.jboss.as.test.shared.PermissionUtils;
@@ -72,30 +71,24 @@ public class SendToExternalJMSTopicTestCase {
 
         @Override
         public void doSetup(org.jboss.as.arquillian.container.ManagementClient managementClient, String s) throws Exception {
+            ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient(), true);
             JMSOperations ops = JMSOperationsProvider.getInstance(managementClient.getControllerClient());
             ops.addExternalHttpConnector("http-test-connector", "http", "http-acceptor");
             ops.createJmsTopic("myAwesomeTopic", "/topic/myAwesomeTopic");
-
-            ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient(), true);
-            ModelNode cOp = Operations.createCompositeOperation();
             ModelNode attr = new ModelNode();
             attr.get("connectors").add("http-test-connector");
             ModelNode op = Operations.createRemoveOperation(getInitialPooledConnectionFactoryAddress());
-            cOp.get(ModelDescriptionConstants.STEPS).add(op);
-            //execute(managementClient, op, true);
+            execute(managementClient, op, true);
             op = Operations.createAddOperation(getPooledConnectionFactoryAddress());
             op.get("transaction").set("xa");
             op.get("entries").add("java:/JmsXA java:jboss/DefaultJMSConnectionFactory");
             op.get("connectors").add("http-test-connector");
-            //execute(managementClient, op, true);
-            cOp.get(ModelDescriptionConstants.STEPS).add(op);
+            execute(managementClient, op, true);
             op = Operations.createAddOperation(getClientTopicAddress());
             op.get("entries").add("java:jboss/exported/topic/myAwesomeClientTopic");
             op.get("entries").add("/topic/myAwesomeClientTopic");
-            //execute(managementClient, op, true);
-            cOp.get(ModelDescriptionConstants.STEPS).add(op);
-            execute(managementClient, cOp, true);
-            ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient(), false);
+            execute(managementClient, op, true);
+            ServerReload.executeReloadAndWaitForCompletion(managementClient.getControllerClient());
         }
 
         private ModelNode execute(final org.jboss.as.arquillian.container.ManagementClient managementClient, final ModelNode op, final boolean expectSuccess) throws IOException {
