@@ -28,10 +28,10 @@ import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
 import org.jboss.as.controller.PathAddress;
 import org.jboss.as.controller.descriptions.ModelDescriptionConstants;
-import org.jboss.as.ee.concurrent.service.ConcurrentServiceNames;
 import org.jboss.as.ee.concurrent.service.ManagedThreadFactoryService;
 import org.jboss.dmr.ModelNode;
 import org.jboss.msc.service.ServiceBuilder;
+import org.jboss.msc.service.ServiceName;
 
 /**
  * @author Eduardo Martins
@@ -51,14 +51,16 @@ public class ManagedThreadFactoryAdd extends AbstractAddStepHandler {
         final String jndiName = ManagedExecutorServiceResourceDefinition.JNDI_NAME_AD.resolveModelAttribute(context, model).asString();
         final int priority = ManagedThreadFactoryResourceDefinition.PRIORITY_AD.resolveModelAttribute(context, model).asInt();
 
+        final ServiceName serviceName = ManagedThreadFactoryResourceDefinition.CAPABILITY.getCapabilityServiceName(name);
         final ManagedThreadFactoryService service = new ManagedThreadFactoryService(name, jndiName, priority);
-        final ServiceBuilder<ManagedThreadFactoryImpl> serviceBuilder = context.getServiceTarget().addService(ConcurrentServiceNames.getManagedThreadFactoryServiceName(name), service);
+        final ServiceBuilder<ManagedThreadFactoryImpl> serviceBuilder = context.getServiceTarget().addService(serviceName, service);
+
         String contextService = null;
         if(model.hasDefined(ManagedThreadFactoryResourceDefinition.CONTEXT_SERVICE)) {
             contextService = ManagedThreadFactoryResourceDefinition.CONTEXT_SERVICE_AD.resolveModelAttribute(context, model).asString();
         }
         if (contextService != null) {
-            serviceBuilder.addDependency(ConcurrentServiceNames.getContextServiceServiceName(contextService), ContextServiceImpl.class, service.getContextServiceInjector());
+            serviceBuilder.addDependency(context.getCapabilityServiceName(ContextServiceResourceDefinition.CAPABILITY.getName(), contextService, ContextServiceImpl.class), ContextServiceImpl.class, service.getContextServiceInjector());
         }
 
         serviceBuilder.install();

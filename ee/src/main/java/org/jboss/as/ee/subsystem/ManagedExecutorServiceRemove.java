@@ -21,23 +21,16 @@
  */
 package org.jboss.as.ee.subsystem;
 
-import org.jboss.as.controller.ServiceRemoveStepHandler;
-import org.jboss.as.ee.concurrent.service.ConcurrentServiceNames;
-import org.jboss.msc.service.ServiceName;
+import org.jboss.as.controller.AbstractRemoveStepHandler;
 
 /**
  * @author Eduardo Martins
  */
-public class ManagedExecutorServiceRemove extends ServiceRemoveStepHandler {
+public class ManagedExecutorServiceRemove extends AbstractRemoveStepHandler {
 
     static final ManagedExecutorServiceRemove INSTANCE = new ManagedExecutorServiceRemove();
 
     private ManagedExecutorServiceRemove() {
-        super(ManagedExecutorServiceAdd.INSTANCE);
     }
 
-    @Override
-    protected ServiceName serviceName(String name) {
-        return ConcurrentServiceNames.getManagedExecutorServiceServiceName(name);
-    }
 }

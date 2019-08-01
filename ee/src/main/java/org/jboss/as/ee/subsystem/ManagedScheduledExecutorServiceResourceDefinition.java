@@ -22,6 +22,7 @@
 package org.jboss.as.ee.subsystem;
 
 import org.glassfish.enterprise.concurrent.AbstractManagedExecutorService;
+import org.glassfish.enterprise.concurrent.ManagedScheduledExecutorServiceAdapter;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationStepHandler;
 import org.jboss.as.controller.PathElement;
@@ -29,6 +30,7 @@ import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
@@ -45,6 +47,12 @@ import org.jboss.dmr.ModelType;
  * @author Eduardo Martins
  */
 public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleResourceDefinition {
+
+    /**
+     * the resource definition's dynamic runtime capability
+     */
+    public static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of("org.wildfly.ee.concurrent.scheduledexecutor", true, ManagedScheduledExecutorServiceAdapter.class)
+            .build();
 
     public static final String JNDI_NAME = "jndi-name";
     public static final String CONTEXT_SERVICE = "context-service";
@@ -63,16 +71,18 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
 
     public static final SimpleAttributeDefinition CONTEXT_SERVICE_AD =
             new SimpleAttributeDefinitionBuilder(CONTEXT_SERVICE, ModelType.STRING, true)
-                    .setAllowExpression(false)
+                    .setAllowExpression(true)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition THREAD_FACTORY_AD =
             new SimpleAttributeDefinitionBuilder(THREAD_FACTORY, ModelType.STRING, true)
-                    .setAllowExpression(false)
+                    .setAllowExpression(true)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .setCapabilityReference(ManagedThreadFactoryResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition HUNG_TASK_THRESHOLD_AD =
@@ -121,7 +131,10 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
     public static final ManagedScheduledExecutorServiceResourceDefinition INSTANCE = new ManagedScheduledExecutorServiceResourceDefinition();
 
     private ManagedScheduledExecutorServiceResourceDefinition() {
-        super(PathElement.pathElement(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE), ManagedScheduledExecutorServiceAdd.INSTANCE, ManagedScheduledExecutorServiceRemove.INSTANCE);
+        super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE))
+                .setAddHandler(ManagedScheduledExecutorServiceAdd.INSTANCE)
+                .setRemoveHandler(ManagedScheduledExecutorServiceRemove.INSTANCE)
+                .addCapabilities(CAPABILITY));
     }
 
     @Override

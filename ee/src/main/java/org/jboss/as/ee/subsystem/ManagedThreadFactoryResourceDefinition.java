@@ -21,6 +21,7 @@
  */
 package org.jboss.as.ee.subsystem;
 
+import org.glassfish.enterprise.concurrent.ManagedThreadFactoryImpl;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationStepHandler;
 import org.jboss.as.controller.PathElement;
@@ -28,6 +29,7 @@ import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
 import org.jboss.as.controller.operations.validation.StringLengthValidator;
 import org.jboss.as.controller.registry.AttributeAccess;
@@ -39,6 +41,12 @@ import org.jboss.dmr.ModelType;
  * @author Eduardo Martins
  */
 public class ManagedThreadFactoryResourceDefinition extends SimpleResourceDefinition {
+
+    /**
+     * the resource definition's dynamic runtime capability
+     */
+    public static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of("org.wildfly.ee.concurrent.threadfactory", true, ManagedThreadFactoryImpl.class)
+            .build();
 
     public static final String JNDI_NAME = "jndi-name";
     public static final String CONTEXT_SERVICE = "context-service";
@@ -52,9 +60,10 @@ public class ManagedThreadFactoryResourceDefinition extends SimpleResourceDefini
 
     public static final SimpleAttributeDefinition CONTEXT_SERVICE_AD =
             new SimpleAttributeDefinitionBuilder(CONTEXT_SERVICE, ModelType.STRING, true)
-                    .setAllowExpression(false)
+                    .setAllowExpression(true)
                     .setValidator(new StringLengthValidator(0,true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition PRIORITY_AD =
@@ -70,7 +79,10 @@ public class ManagedThreadFactoryResourceDefinition extends SimpleResourceDefini
     public static final ManagedThreadFactoryResourceDefinition INSTANCE = new ManagedThreadFactoryResourceDefinition();
 
     private ManagedThreadFactoryResourceDefinition() {
-        super(PathElement.pathElement(EESubsystemModel.MANAGED_THREAD_FACTORY), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_THREAD_FACTORY), ManagedThreadFactoryAdd.INSTANCE, ManagedThreadFactoryRemove.INSTANCE);
+        super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(EESubsystemModel.MANAGED_THREAD_FACTORY), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_THREAD_FACTORY))
+                .setAddHandler(ManagedThreadFactoryAdd.INSTANCE)
+                .setRemoveHandler(ManagedThreadFactoryRemove.INSTANCE)
+                .addCapabilities(CAPABILITY));
     }
 
     @Override

@@ -22,6 +22,7 @@
 package org.jboss.as.ee.subsystem;
 
 import org.glassfish.enterprise.concurrent.AbstractManagedExecutorService;
+import org.glassfish.enterprise.concurrent.ManagedExecutorServiceAdapter;
 import org.jboss.as.controller.AttributeDefinition;
 import org.jboss.as.controller.OperationContext;
 import org.jboss.as.controller.OperationFailedException;
@@ -32,6 +33,7 @@ import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
@@ -50,6 +52,12 @@ import org.jboss.dmr.ModelType;
  * @author Eduardo Martins
  */
 public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefinition {
+
+    /**
+     * the resource definition's dynamic runtime capability
+     */
+    public static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of("org.wildfly.ee.concurrent.executor", true, ManagedExecutorServiceAdapter.class)
+            .build();
 
     public static final String JNDI_NAME = "jndi-name";
     public static final String CONTEXT_SERVICE = "context-service";
@@ -70,16 +78,18 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
 
     public static final SimpleAttributeDefinition CONTEXT_SERVICE_AD =
             new SimpleAttributeDefinitionBuilder(CONTEXT_SERVICE, ModelType.STRING, true)
-                    .setAllowExpression(false)
+                    .setAllowExpression(true)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition THREAD_FACTORY_AD =
             new SimpleAttributeDefinitionBuilder(THREAD_FACTORY, ModelType.STRING, true)
-                    .setAllowExpression(false)
+                    .setAllowExpression(true)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
+                    .setCapabilityReference(ManagedThreadFactoryResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition HUNG_TASK_THRESHOLD_AD =
@@ -142,7 +152,10 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
     public static final ManagedExecutorServiceResourceDefinition INSTANCE = new ManagedExecutorServiceResourceDefinition();
 
     private ManagedExecutorServiceResourceDefinition() {
-        super(PathElement.pathElement(EESubsystemModel.MANAGED_EXECUTOR_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_EXECUTOR_SERVICE), ManagedExecutorServiceAdd.INSTANCE, ManagedExecutorServiceRemove.INSTANCE);
+        super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(EESubsystemModel.MANAGED_EXECUTOR_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_EXECUTOR_SERVICE))
+                .setAddHandler(ManagedExecutorServiceAdd.INSTANCE)
+                .setRemoveHandler(ManagedExecutorServiceRemove.INSTANCE)
+                .addCapabilities(CAPABILITY));
     }
 
     @Override

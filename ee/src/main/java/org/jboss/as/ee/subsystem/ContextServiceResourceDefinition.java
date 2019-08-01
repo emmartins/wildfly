@@ -28,8 +28,10 @@ import org.jboss.as.controller.ReloadRequiredWriteAttributeHandler;
 import org.jboss.as.controller.SimpleAttributeDefinition;
 import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
+import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.registry.AttributeAccess;
 import org.jboss.as.controller.registry.ManagementResourceRegistration;
+import org.jboss.as.ee.concurrent.ContextServiceImpl;
 import org.jboss.dmr.ModelNode;
 import org.jboss.dmr.ModelType;
 
@@ -37,6 +39,12 @@ import org.jboss.dmr.ModelType;
  * @author Eduardo Martins
  */
 public class ContextServiceResourceDefinition extends SimpleResourceDefinition {
+
+    /**
+     * the resource definition's dynamic runtime capability
+     */
+    public static final RuntimeCapability<Void> CAPABILITY = RuntimeCapability.Builder.of("org.wildfly.ee.concurrent.context.service", true, ContextServiceImpl.class)
+            .build();
 
     public static final String JNDI_NAME = "jndi-name";
     public static final String USE_TRANSACTION_SETUP_PROVIDER = "use-transaction-setup-provider";
@@ -59,7 +67,10 @@ public class ContextServiceResourceDefinition extends SimpleResourceDefinition {
     public static final ContextServiceResourceDefinition INSTANCE = new ContextServiceResourceDefinition();
 
     private ContextServiceResourceDefinition() {
-        super(PathElement.pathElement(EESubsystemModel.CONTEXT_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.CONTEXT_SERVICE), ContextServiceAdd.INSTANCE, ContextServiceRemove.INSTANCE);
+        super(new SimpleResourceDefinition.Parameters(PathElement.pathElement(EESubsystemModel.CONTEXT_SERVICE), EeExtension.getResourceDescriptionResolver(EESubsystemModel.CONTEXT_SERVICE))
+                .setAddHandler(ContextServiceAdd.INSTANCE)
+                .setRemoveHandler(ContextServiceRemove.INSTANCE)
+                .addCapabilities(CAPABILITY));
     }
 
     @Override

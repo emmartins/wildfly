@@ -21,23 +21,15 @@
  */
 package org.jboss.as.ee.subsystem;
 
-import org.jboss.as.controller.ServiceRemoveStepHandler;
-import org.jboss.as.ee.concurrent.service.ConcurrentServiceNames;
-import org.jboss.msc.service.ServiceName;
+import org.jboss.as.controller.AbstractRemoveStepHandler;
 
 /**
  * @author Eduardo Martins
  */
-public class ManagedThreadFactoryRemove extends ServiceRemoveStepHandler {
+public class ManagedThreadFactoryRemove extends AbstractRemoveStepHandler {
 
     static final ManagedThreadFactoryRemove INSTANCE = new ManagedThreadFactoryRemove();
 
     private ManagedThreadFactoryRemove() {
-        super(ManagedThreadFactoryAdd.INSTANCE);
-    }
-
-    @Override
-    protected ServiceName serviceName(String name) {
-        return ConcurrentServiceNames.getManagedThreadFactoryServiceName(name);
     }
 }
