@@ -82,7 +82,7 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
                     .setAllowExpression(false)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
-                    .setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
+                    //.setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition THREAD_FACTORY_AD =
@@ -90,7 +90,7 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
                     .setAllowExpression(false)
                     .setValidator(new StringLengthValidator(0, true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
-                    .setCapabilityReference(ManagedThreadFactoryResourceDefinition.CAPABILITY.getName(), CAPABILITY)
+                    //.setCapabilityReference(ManagedThreadFactoryResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition HUNG_TASK_THRESHOLD_AD =

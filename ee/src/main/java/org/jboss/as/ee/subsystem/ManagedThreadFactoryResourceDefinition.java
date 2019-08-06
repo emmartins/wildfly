@@ -64,7 +64,7 @@ public class ManagedThreadFactoryResourceDefinition extends SimpleResourceDefini
                     .setAllowExpression(false)
                     .setValidator(new StringLengthValidator(0,true))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
-                    .setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
+                    //.setCapabilityReference(ContextServiceResourceDefinition.CAPABILITY.getName(), CAPABILITY)
                     .build();
 
     public static final SimpleAttributeDefinition PRIORITY_AD =
