@@ -5484,8 +5484,20 @@
                         <artifactId>javassist</artifactId>
                     </exclusion>
                     <exclusion>
+                        <groupId>javax.activation</groupId>
+                        <artifactId>javax.activation-api</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.persistence</groupId>
+                        <artifactId>javax.persistence-api</artifactId>
+                    </exclusion>
+                    <exclusion>
                         <groupId>javax.transaction</groupId>
                         <artifactId>jta</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.xml.bind</groupId>
+                        <artifactId>jaxb-api</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>org.slf4j</groupId>
@@ -5537,6 +5549,10 @@
                     <exclusion>
                         <groupId>javassist</groupId>
                         <artifactId>javassist</artifactId>
+                    </exclusion>
+                    <exclusion>
+                        <groupId>javax.persistence</groupId>
+                        <artifactId>javax.persistence-api</artifactId>
                     </exclusion>
                     <exclusion>
                         <groupId>javax.transaction</groupId>
@@ -6927,6 +6943,10 @@
                 <artifactId>resteasy-spring</artifactId>
                 <version>${version.org.jboss.resteasy}</version>
                 <exclusions>
+                    <exclusion>
+                        <groupId>javax.activation</groupId>
+                        <artifactId>activation</artifactId>
+                    </exclusion>
                     <exclusion>
                         <groupId>org.jboss.spec.javax.annotation</groupId>
                         <artifactId>jboss-annotations-api_1.2_spec</artifactId>
