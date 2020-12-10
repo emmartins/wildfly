@@ -61,6 +61,7 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
     public static final String CONTEXT_SERVICE = "context-service";
     public static final String THREAD_FACTORY = "thread-factory";
     public static final String THREAD_PRIORITY = "thread-priority";
+    public static final String HUNG_TASK_TERMINATION_PERIOD = "hung-task-termination-period";
     public static final String HUNG_TASK_THRESHOLD = "hung-task-threshold";
     public static final String LONG_RUNNING_TASKS = "long-running-tasks";
     public static final String CORE_THREADS = "core-threads";
@@ -98,6 +99,15 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
                     .setDefaultValue(new ModelNode(Thread.NORM_PRIORITY))
                     .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
                     .setAlternatives(THREAD_FACTORY)
+                    .build();
+
+    public static final SimpleAttributeDefinition HUNG_TASK_TERMINATION_PERIOD_AD =
+            new SimpleAttributeDefinitionBuilder(HUNG_TASK_TERMINATION_PERIOD, ModelType.LONG, true)
+                    .setAllowExpression(true)
+                    .setValidator(new LongRangeValidator(0, Long.MAX_VALUE, true, true))
+                    .setMeasurementUnit(MeasurementUnit.MILLISECONDS)
+                    .setDefaultValue(ModelNode.ZERO)
+                    .setFlags(AttributeAccess.Flag.RESTART_RESOURCE_SERVICES)
                     .build();
 
     public static final SimpleAttributeDefinition HUNG_TASK_THRESHOLD_AD =
@@ -140,7 +150,7 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
                     .setValidator(EnumValidator.create(AbstractManagedExecutorService.RejectPolicy.class, true, true))
                     .build();
 
-    static final SimpleAttributeDefinition[] ATTRIBUTES = {JNDI_NAME_AD, CONTEXT_SERVICE_AD, THREAD_FACTORY_AD, THREAD_PRIORITY_AD, HUNG_TASK_THRESHOLD_AD, LONG_RUNNING_TASKS_AD, CORE_THREADS_AD, KEEPALIVE_TIME_AD, REJECT_POLICY_AD};
+    static final SimpleAttributeDefinition[] ATTRIBUTES = {JNDI_NAME_AD, CONTEXT_SERVICE_AD, THREAD_FACTORY_AD, THREAD_PRIORITY_AD, HUNG_TASK_TERMINATION_PERIOD_AD, HUNG_TASK_THRESHOLD_AD, LONG_RUNNING_TASKS_AD, CORE_THREADS_AD, KEEPALIVE_TIME_AD, REJECT_POLICY_AD};
 
     public static final PathElement PATH_ELEMENT = PathElement.pathElement(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE);
 
@@ -193,6 +203,14 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
         resourceBuilder.getAttributeBuilder()
                 .setDiscard(DiscardAttributeChecker.UNDEFINED, THREAD_PRIORITY_AD)
                 .addRejectCheck(RejectAttributeChecker.DEFINED, THREAD_PRIORITY_AD)
+                .end();
+    }
+
+    static void registerTransformers6_0(final ResourceTransformationDescriptionBuilder builder) {
+        final ResourceTransformationDescriptionBuilder resourceBuilder = builder.addChildResource(PATH_ELEMENT);
+        resourceBuilder.getAttributeBuilder()
+                .setDiscard(DiscardAttributeChecker.UNDEFINED, HUNG_TASK_TERMINATION_PERIOD_AD)
+                .addRejectCheck(RejectAttributeChecker.DEFINED, HUNG_TASK_TERMINATION_PERIOD_AD)
                 .end();
     }
 }
