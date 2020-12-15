@@ -36,6 +36,7 @@ import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
+import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
 import org.jboss.as.controller.operations.validation.LongRangeValidator;
@@ -174,6 +175,8 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
 
     public static final PathElement PATH_ELEMENT = PathElement.pathElement(EESubsystemModel.MANAGED_EXECUTOR_SERVICE);
 
+    private static final ResourceDescriptionResolver RESOLVER = EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_EXECUTOR_SERVICE);
+
     /**
      * metrics op step handler
      */
@@ -188,16 +191,27 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
             .build();
 
     /**
+     * terminate hung threads op
+     */
+    private static final TerminateHungTasksOperation<ManagedExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new TerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
+
+    /**
      *
      */
     private final boolean registerRuntimeOnly;
 
     ManagedExecutorServiceResourceDefinition(boolean registerRuntimeOnly) {
-        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_EXECUTOR_SERVICE))
+        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, RESOLVER)
                 .setAddHandler(ManagedExecutorServiceAdd.INSTANCE)
                 .setRemoveHandler(new ServiceRemoveStepHandler(ManagedExecutorServiceAdd.INSTANCE))
                 .addCapabilities(CAPABILITY));
         this.registerRuntimeOnly = registerRuntimeOnly;
+    }
+
+    @Override
+    public void registerOperations(ManagementResourceRegistration resourceRegistration) {
+        super.registerOperations(resourceRegistration);
+        TERMINATE_HUNG_TASKS_OP.registerOperation(resourceRegistration);
     }
 
     @Override

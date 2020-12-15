@@ -33,6 +33,7 @@ import org.jboss.as.controller.SimpleAttributeDefinitionBuilder;
 import org.jboss.as.controller.SimpleResourceDefinition;
 import org.jboss.as.controller.capability.RuntimeCapability;
 import org.jboss.as.controller.client.helpers.MeasurementUnit;
+import org.jboss.as.controller.descriptions.ResourceDescriptionResolver;
 import org.jboss.as.controller.operations.validation.EnumValidator;
 import org.jboss.as.controller.operations.validation.IntRangeValidator;
 import org.jboss.as.controller.operations.validation.LongRangeValidator;
@@ -154,6 +155,8 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
 
     public static final PathElement PATH_ELEMENT = PathElement.pathElement(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE);
 
+    private static final ResourceDescriptionResolver RESOLVER = EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE);
+
     /**
      * metrics op step handler
      */
@@ -168,12 +171,17 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
             .build();
 
     /**
+     * terminate hung threads op
+     */
+    private static final TerminateHungTasksOperation<ManagedScheduledExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new TerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
+
+    /**
      *
      */
     private final boolean registerRuntimeOnly;
 
     ManagedScheduledExecutorServiceResourceDefinition(boolean registerRuntimeOnly) {
-        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, EeExtension.getResourceDescriptionResolver(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE))
+        super(new SimpleResourceDefinition.Parameters(PATH_ELEMENT, RESOLVER)
                 .setAddHandler(ManagedScheduledExecutorServiceAdd.INSTANCE)
                 .setRemoveHandler(new ServiceRemoveStepHandler(ManagedScheduledExecutorServiceAdd.INSTANCE))
                 .addCapabilities(CAPABILITY));
@@ -189,6 +197,12 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
         if (registerRuntimeOnly) {
             METRICS_HANDLER.registerAttributes(resourceRegistration);
         }
+    }
+
+    @Override
+    public void registerOperations(ManagementResourceRegistration resourceRegistration) {
+        super.registerOperations(resourceRegistration);
+        TERMINATE_HUNG_TASKS_OP.registerOperation(resourceRegistration);
     }
 
     static void registerTransformers_4_0(final ResourceTransformationDescriptionBuilder builder) {

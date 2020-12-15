@@ -356,7 +356,7 @@
     <xs:simpleType name="hungTaskTerminationPeriodType">
         <xs:annotation>
             <xs:documentation>
-                The period, in milliseconds, for hung tasks automatic termination. If value is 0, which is the default, hung tasks are never terminated.
+                The period, in milliseconds, to attempt automatic hung tasks termination, by cancelling such tasks. If value is 0, which is the default, hung tasks are never cancelled.
             </xs:documentation>
         </xs:annotation>
         <xs:restriction base="xs:long">

@@ -1151,7 +1151,7 @@ public interface EeLogger extends BasicLogger {
     //void notUsingEE8PreviewMode();
 
     @Message(id = 120, value = "Failed to locate executor service '%s'")
-    OperationFailedException executorServiceNotFoundForMetrics(ServiceName serviceName);
+    OperationFailedException executorServiceNotFound(ServiceName serviceName);
 
     @Message(id = 121, value = "Unsupported attribute '%s'")
     IllegalStateException unsupportedExecutorServiceMetric(String attributeName);
@@ -1175,4 +1175,14 @@ public interface EeLogger extends BasicLogger {
     @LogMessage(level = WARN)
     @Message(id = 127, value = "Invalid '%s' name segment for env, name can't start with '/' prefix, prefix has been removed")
     void invalidNamePrefix(String name);
+
+    /**
+     * Logs a warning message indicating a failure when terminating a managed executor's hung task.
+     * @param cause     the cause of the error.
+     * @param taskName the name of the hung task.
+     * @param executorName the name of the executor.
+     */
+    @LogMessage(level = WARN)
+    @Message(id = 128, value = "Failure when terminating %s hung task %s, from %s")
+    void huntTaskTerminationFailure(@Cause Throwable cause, String executorName, String taskName);
 }
