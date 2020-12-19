@@ -1183,6 +1183,6 @@ public interface EeLogger extends BasicLogger {
      * @param executorName the name of the executor.
      */
     @LogMessage(level = WARN)
-    @Message(id = 128, value = "Failure when terminating %s hung task %s, from %s")
+    @Message(id = 128, value = "Failure when terminating %s hung task %s")
     void huntTaskTerminationFailure(@Cause Throwable cause, String executorName, String taskName);
 }

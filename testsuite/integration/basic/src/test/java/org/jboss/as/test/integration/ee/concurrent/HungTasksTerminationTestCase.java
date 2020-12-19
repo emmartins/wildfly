@@ -73,6 +73,10 @@ public class HungTasksTerminationTestCase {
 
     private static final PathAddress EE_SUBSYSTEM_PATH_ADDRESS = PathAddress.pathAddress(PathElement.pathElement(SUBSYSTEM, EeExtension.SUBSYSTEM_NAME));
     private static final String RESOURCE_NAME = HungTasksTerminationTestCase.class.getSimpleName();
+    // a task is considered hung when is running over 0.5s
+    private static final long HUNG_TASK_THRESHOLD_TEST_VALUE = 500;
+    // hung tasks periodic cancellation should be done every 5s
+    private static final long HUNG_TASK_CANCELLATION_PERIOD_TEST_VALUE = 5000;
 
     @ArquillianResource
     private ManagementClient managementClient;
@@ -90,20 +94,19 @@ public class HungTasksTerminationTestCase {
     }
 
     @Test
-    public void testManagedExecutorServiceHungTasksTermination() throws Exception {
+    public void testManagedExecutorServiceHungTasksCancellationOperation() throws Exception {
         final PathAddress pathAddress = EE_SUBSYSTEM_PATH_ADDRESS.append(EESubsystemModel.MANAGED_EXECUTOR_SERVICE, RESOURCE_NAME);
         // add
         final ModelNode addOperation = Util.createAddOperation(pathAddress);
         final String jndiName = "java:jboss/ee/concurrency/executor/" + RESOURCE_NAME;
         addOperation.get(ManagedExecutorServiceResourceDefinition.JNDI_NAME).set(jndiName);
-        // task will be considered hung if runtime duration > 1s
-        addOperation.get(ManagedExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(1000);
+        addOperation.get(ManagedExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(HUNG_TASK_THRESHOLD_TEST_VALUE);
         final ModelNode addResult = managementClient.getControllerClient().execute(addOperation);
         Assert.assertFalse(addResult.get(FAILURE_DESCRIPTION).toString(), addResult.get(FAILURE_DESCRIPTION).isDefined());
         try {
             final ManagedExecutorService executorService = InitialContext.doLookup(jndiName);
             Assert.assertNotNull(executorService);
-            testTerminateHungTasksOperation(pathAddress, executorService);
+            testHungTasksCancellationOperation(pathAddress, executorService);
         } finally {
             // remove
             final ModelNode removeOperation = Util.createRemoveOperation(pathAddress);
@@ -115,21 +118,20 @@ public class HungTasksTerminationTestCase {
     }
 
     @Test
-    public void testManagedScheduledExecutorServiceHungTasksTermination() throws Exception {
+    public void testManagedScheduledExecutorServiceHungTasksCancellationOperation() throws Exception {
         final PathAddress pathAddress = EE_SUBSYSTEM_PATH_ADDRESS.append(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE, RESOURCE_NAME);
         // add
         final ModelNode addOperation = Util.createAddOperation(pathAddress);
         final String jndiName = "java:jboss/ee/concurrency/scheduledexecutor/" + RESOURCE_NAME;
         addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.JNDI_NAME).set(jndiName);
-        // task will be considered hung if duration > 1s
-        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(1000);
+        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(HUNG_TASK_THRESHOLD_TEST_VALUE);
         final ModelNode addResult = managementClient.getControllerClient().execute(addOperation);
         Assert.assertFalse(addResult.get(FAILURE_DESCRIPTION).toString(), addResult.get(FAILURE_DESCRIPTION).isDefined());
         try {
             // lookup the executor
             final ManagedExecutorService executorService = InitialContext.doLookup(jndiName);
             Assert.assertNotNull(executorService);
-            testTerminateHungTasksOperation(pathAddress, executorService);
+            testHungTasksCancellationOperation(pathAddress, executorService);
         } finally {
             // remove
             final ModelNode removeOperation = Util.createRemoveOperation(pathAddress);
@@ -140,33 +142,136 @@ public class HungTasksTerminationTestCase {
         }
     }
 
-    private void testTerminateHungTasksOperation(PathAddress pathAddress, ManagedExecutorService executorService) throws IOException, ExecutionException, InterruptedException, BrokenBarrierException {
-        // assert stats initial values
+    @Test
+    public void testManagedExecutorServiceHungTasksCancellationPeriodic() throws Exception {
+        final PathAddress pathAddress = EE_SUBSYSTEM_PATH_ADDRESS.append(EESubsystemModel.MANAGED_EXECUTOR_SERVICE, RESOURCE_NAME);
+        // add
+        final ModelNode addOperation = Util.createAddOperation(pathAddress);
+        final String jndiName = "java:jboss/ee/concurrency/executor/" + RESOURCE_NAME;
+        addOperation.get(ManagedExecutorServiceResourceDefinition.JNDI_NAME).set(jndiName);
+        addOperation.get(ManagedExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(HUNG_TASK_THRESHOLD_TEST_VALUE);
+        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.HUNG_TASK_TERMINATION_PERIOD).set(HUNG_TASK_CANCELLATION_PERIOD_TEST_VALUE);
+        final ModelNode addResult = managementClient.getControllerClient().execute(addOperation);
+        Assert.assertFalse(addResult.get(FAILURE_DESCRIPTION).toString(), addResult.get(FAILURE_DESCRIPTION).isDefined());
+        try {
+            final ManagedExecutorService executorService = InitialContext.doLookup(jndiName);
+            Assert.assertNotNull(executorService);
+            testHungTasksCancellationPeriodic(pathAddress, executorService);
+        } finally {
+            // remove
+            final ModelNode removeOperation = Util.createRemoveOperation(pathAddress);
+            removeOperation.get(OPERATION_HEADERS, ALLOW_RESOURCE_SERVICE_RESTART).set(true);
+            final ModelNode removeResult = managementClient.getControllerClient().execute(removeOperation);
+            Assert.assertFalse(removeResult.get(FAILURE_DESCRIPTION).toString(), removeResult.get(FAILURE_DESCRIPTION)
+                    .isDefined());
+        }
+    }
+
+    @Test
+    public void testManagedScheduledExecutorServiceHungTasksCancellationPeriodic() throws Exception {
+        final PathAddress pathAddress = EE_SUBSYSTEM_PATH_ADDRESS.append(EESubsystemModel.MANAGED_SCHEDULED_EXECUTOR_SERVICE, RESOURCE_NAME);
+        // add
+        final ModelNode addOperation = Util.createAddOperation(pathAddress);
+        final String jndiName = "java:jboss/ee/concurrency/scheduledexecutor/" + RESOURCE_NAME;
+        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.JNDI_NAME).set(jndiName);
+        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.HUNG_TASK_THRESHOLD).set(HUNG_TASK_THRESHOLD_TEST_VALUE);
+        addOperation.get(ManagedScheduledExecutorServiceResourceDefinition.HUNG_TASK_TERMINATION_PERIOD).set(HUNG_TASK_CANCELLATION_PERIOD_TEST_VALUE);
+        final ModelNode addResult = managementClient.getControllerClient().execute(addOperation);
+        Assert.assertFalse(addResult.get(FAILURE_DESCRIPTION).toString(), addResult.get(FAILURE_DESCRIPTION).isDefined());
+        try {
+            // lookup the executor
+            final ManagedExecutorService executorService = InitialContext.doLookup(jndiName);
+            Assert.assertNotNull(executorService);
+            testHungTasksCancellationPeriodic(pathAddress, executorService);
+        } finally {
+            // remove
+            final ModelNode removeOperation = Util.createRemoveOperation(pathAddress);
+            removeOperation.get(OPERATION_HEADERS, ALLOW_RESOURCE_SERVICE_RESTART).set(true);
+            final ModelNode removeResult = managementClient.getControllerClient().execute(removeOperation);
+            Assert.assertFalse(removeResult.get(FAILURE_DESCRIPTION).toString(), removeResult.get(FAILURE_DESCRIPTION)
+                    .isDefined());
+        }
+    }
+
+    private void testHungTasksCancellationOperation(PathAddress pathAddress, ManagedExecutorService executorService) throws IOException, ExecutionException, InterruptedException, BrokenBarrierException {
+        // assert no hung tasks exists at start
         assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 0);
-        final CyclicBarrier barrier1 = new CyclicBarrier(3);
+        final CyclicBarrier barrier1 = new CyclicBarrier(2);
+        final CyclicBarrier barrier2 = new CyclicBarrier(2);
         final Runnable runnable = () -> {
             try {
+                // signal task is running
                 barrier1.await();
-                Thread.sleep(10000);
+                // sleep till hung
+                Thread.sleep(HUNG_TASK_THRESHOLD_TEST_VALUE + 1);
+                // signal task is hung
+                barrier2.await();
             } catch (Exception e) {
+                // unexpected, thus fail
+                Assert.fail();
+            }
+            // sleep 1 min, expecting cancellation
+            try {
+                Thread.sleep(60000);
+            } catch (Exception e) {
+                // expected, was cancelled
                 throw new RuntimeException(e);
             }
+            // not expected, was not cancelled
             Assert.fail();
         };
         executorService.submit(runnable);
+        barrier1.await();
+        // all crossed the 1st barrier, task is running
+        barrier2.await();
+        // all crossed the 2nd barrier, task should be considered hung
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 1);
+        // let's invoke the op to cancel the hung tasks
+        executeHungTasksCancellationOperation(pathAddress);
+        // and assert now no hung tasks exists
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 0);
+    }
+
+    private void testHungTasksCancellationPeriodic(PathAddress pathAddress, ManagedExecutorService executorService) throws IOException, ExecutionException, InterruptedException, BrokenBarrierException {
+        // assert no hung tasks exists at start
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 0);
+        final CyclicBarrier barrier1 = new CyclicBarrier(2);
+        final CyclicBarrier barrier2 = new CyclicBarrier(2);
+        final Runnable runnable = () -> {
+            try {
+                // signal task is running
+                barrier1.await();
+                // sleep till hung
+                Thread.sleep(HUNG_TASK_THRESHOLD_TEST_VALUE + 1);
+                // signal task is hung
+                barrier2.await();
+            } catch (Exception e) {
+                // unexpected, thus fail
+                Assert.fail();
+            }
+            // sleep 1 min, expecting cancellation
+            try {
+                Thread.sleep(60000);
+            } catch (Exception e) {
+                // expected, was cancelled
+                throw new RuntimeException(e);
+            }
+            // not expected, was not cancelled
+            Assert.fail();
+        };
         executorService.submit(runnable);
         barrier1.await();
-        // all crossed the barrier, means both tasks are running (and sleeping)
+        // all crossed the 1st barrier, task is running
+        barrier2.await();
+        // all crossed the 2nd barrier, task should be considered hung
+        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 1);
+        // sleep periodic cancellation
         try {
-            Thread.sleep(1500);
+            Thread.sleep(HUNG_TASK_CANCELLATION_PERIOD_TEST_VALUE);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        // after sleeping for over hung threshold time both tasks should now be considered hung...
-        assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 2);
-        // let's invoke the op to terminate the hung tasks
-        executeTerminateHungTasksOperation(pathAddress);
-        // and assert now no hung tasks exists
+        // assert no hung tasks exists
         assertStatsAttribute(pathAddress, ManagedExecutorServiceMetricsAttributes.HUNG_THREAD_COUNT, 0);
     }
 
@@ -179,7 +284,7 @@ public class HungTasksTerminationTestCase {
 
     private void assertStatsAttribute(PathAddress resourceAddress, String attrName, int expectedAttrValue) throws IOException, InterruptedException {
         int actualAttrValue = readStatsAttribute(resourceAddress, attrName);
-        int retries = 3;
+        int retries = 5;
         while (actualAttrValue != expectedAttrValue && retries > 0) {
             Thread.sleep(500);
             actualAttrValue = readStatsAttribute(resourceAddress, attrName);
@@ -188,7 +293,7 @@ public class HungTasksTerminationTestCase {
         Assert.assertEquals(attrName, expectedAttrValue, actualAttrValue);
     }
 
-    private int executeTerminateHungTasksOperation(PathAddress resourceAddress) throws IOException {
+    private int executeHungTasksCancellationOperation(PathAddress resourceAddress) throws IOException {
         ModelNode op = Util.createOperation(TerminateHungTasksOperation.NAME, resourceAddress);
         final ModelNode result = managementClient.getControllerClient().execute(op);
         Assert.assertFalse(result.get(FAILURE_DESCRIPTION).toString(), result.get(FAILURE_DESCRIPTION).isDefined());
