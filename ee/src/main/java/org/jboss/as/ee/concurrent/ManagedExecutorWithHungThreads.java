@@ -38,10 +38,9 @@ public interface ManagedExecutorWithHungThreads {
      * Attempts to terminate the executor's hung tasks, by cancelling such tasks.
      * @return the number of hung tasks cancelled
      */
-    default int terminateHungTasks() {
+    default void terminateHungTasks() {
         final String executorName = getClass().getSimpleName() + ":" + getName();
-        EeLogger.ROOT_LOGGER.tracef("Cancelling %s hung tasks...", executorName);
-        int terminatedCount = 0;
+        EeLogger.ROOT_LOGGER.debugf("Cancelling %s hung tasks...", executorName);
         final Collection<AbstractManagedThread> hungThreads = getHungThreads();
         if (hungThreads != null) {
             for (AbstractManagedThread t : hungThreads) {
@@ -49,10 +48,9 @@ public interface ManagedExecutorWithHungThreads {
                 try {
                     if (t instanceof ManagedThreadFactoryImpl.ManagedThread) {
                         if (((ManagedThreadFactoryImpl.ManagedThread)t).cancelTask()) {
-                            terminatedCount++;
-                            EeLogger.ROOT_LOGGER.infof("%s hung task %s cancelled.", executorName, taskIdentityName);
+                            EeLogger.ROOT_LOGGER.hungTaskCancelled(executorName, taskIdentityName);
                         } else {
-                            EeLogger.ROOT_LOGGER.infof("%s hung task %s not cancelled.", executorName, taskIdentityName);
+                            EeLogger.ROOT_LOGGER.hungTaskNotCancelled(executorName, taskIdentityName);
                         }
                     }
                 } catch (Throwable throwable) {
@@ -60,7 +58,6 @@ public interface ManagedExecutorWithHungThreads {
                 }
             }
         }
-        return terminatedCount;
     }
 
     /**

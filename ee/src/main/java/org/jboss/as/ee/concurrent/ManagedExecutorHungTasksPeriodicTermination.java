@@ -17,8 +17,6 @@
  */
 package org.jboss.as.ee.concurrent;
 
-import org.jboss.as.ee.logging.EeLogger;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -29,7 +27,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- *
+ * Periodic hung task termination for managed executors.
  * @author emmartins
  */
 public class ManagedExecutorHungTasksPeriodicTermination {
@@ -45,6 +43,12 @@ public class ManagedExecutorHungTasksPeriodicTermination {
         executorFutureMap = new HashMap<>();
     }
 
+    /**
+     * Adds periodic hang task termination for the specified executor.
+     * @param executor
+     * @param hungTaskTerminationPeriod
+     * @return true if periodic hang task termination was added to the specified executor, false otherwise
+     */
     public boolean addManagedExecutor(final ManagedExecutorWithHungThreads executor, final long hungTaskTerminationPeriod) {
         if (executor == null) {
             throw new NullPointerException("executor is null");
@@ -60,15 +64,7 @@ public class ManagedExecutorHungTasksPeriodicTermination {
             if (this.scheduler == null) {
                 this.scheduler = Executors.newSingleThreadScheduledExecutor();
             }
-            final Future future = scheduler.scheduleAtFixedRate(() -> {
-                final String executorName = executor.getClass().getSimpleName() + ":" + executor.getName();
-                EeLogger.ROOT_LOGGER.warnf("Executing periodic termination of hung tasks for executor %s...", executorName);
-                try {
-                    executor.terminateHungTasks();
-                } catch (Throwable t) {
-                    EeLogger.ROOT_LOGGER.warnf(t, "Failure on periodic termination of hung tasks for executor %s", executorName);
-                }
-            }, hungTaskTerminationPeriod, hungTaskTerminationPeriod, TimeUnit.MILLISECONDS);
+            final Future future = scheduler.scheduleAtFixedRate(() -> executor.terminateHungTasks(), hungTaskTerminationPeriod, hungTaskTerminationPeriod, TimeUnit.MILLISECONDS);
             executorFutureMap.put(executor, future);
             return true;
         }
@@ -77,6 +73,11 @@ public class ManagedExecutorHungTasksPeriodicTermination {
         }
     }
 
+    /**
+     * Removes periodic hang task termination for the specified executor.
+     * @param executor
+     * @return true if periodic hang task termination was removed for the specified executor, false otherwise
+     */
     public boolean removeManagedExecutor(ManagedExecutorWithHungThreads executor) {
         lock.lock();
         try {

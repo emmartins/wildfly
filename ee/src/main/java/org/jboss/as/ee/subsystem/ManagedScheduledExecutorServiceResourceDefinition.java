@@ -173,7 +173,7 @@ public class ManagedScheduledExecutorServiceResourceDefinition extends SimpleRes
     /**
      * terminate hung threads op
      */
-    private static final TerminateHungTasksOperation<ManagedScheduledExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new TerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
+    private static final ManagedExecutorTerminateHungTasksOperation<ManagedScheduledExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new ManagedExecutorTerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
 
     /**
      *

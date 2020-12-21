@@ -34,7 +34,7 @@ import org.jboss.as.ee.subsystem.EeExtension;
 import org.jboss.as.ee.subsystem.ManagedExecutorServiceMetricsAttributes;
 import org.jboss.as.ee.subsystem.ManagedExecutorServiceResourceDefinition;
 import org.jboss.as.ee.subsystem.ManagedScheduledExecutorServiceResourceDefinition;
-import org.jboss.as.ee.subsystem.TerminateHungTasksOperation;
+import org.jboss.as.ee.subsystem.ManagedExecutorTerminateHungTasksOperation;
 import org.jboss.dmr.ModelNode;
 import org.jboss.logging.Logger;
 import org.jboss.remoting3.security.RemotingPermission;
@@ -293,10 +293,9 @@ public class HungTasksTerminationTestCase {
         Assert.assertEquals(attrName, expectedAttrValue, actualAttrValue);
     }
 
-    private int executeHungTasksCancellationOperation(PathAddress resourceAddress) throws IOException {
-        ModelNode op = Util.createOperation(TerminateHungTasksOperation.NAME, resourceAddress);
+    private void executeHungTasksCancellationOperation(PathAddress resourceAddress) throws IOException {
+        ModelNode op = Util.createOperation(ManagedExecutorTerminateHungTasksOperation.NAME, resourceAddress);
         final ModelNode result = managementClient.getControllerClient().execute(op);
         Assert.assertFalse(result.get(FAILURE_DESCRIPTION).toString(), result.get(FAILURE_DESCRIPTION).isDefined());
-        return result.get(RESULT).asInt();
     }
 }

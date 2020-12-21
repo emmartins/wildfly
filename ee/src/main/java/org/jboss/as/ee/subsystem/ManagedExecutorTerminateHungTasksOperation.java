@@ -37,7 +37,7 @@ import org.jboss.msc.service.ServiceName;
  *
  * @author emmartins
  */
-public class TerminateHungTasksOperation<T> {
+public class ManagedExecutorTerminateHungTasksOperation<T> {
 
     public static final String NAME = "terminate-hung-tasks";
 
@@ -51,7 +51,7 @@ public class TerminateHungTasksOperation<T> {
      * @param resolver
      * @param executorProvider
      */
-    TerminateHungTasksOperation(final RuntimeCapability capability, ResourceDescriptionResolver resolver, ExecutorProvider<T> executorProvider) {
+    ManagedExecutorTerminateHungTasksOperation(final RuntimeCapability capability, ResourceDescriptionResolver resolver, ExecutorProvider<T> executorProvider) {
         this.capability = capability;
         this.operationDefinition = new SimpleOperationDefinitionBuilder(NAME, resolver)
                 .setRuntimeOnly()
@@ -75,7 +75,7 @@ public class TerminateHungTasksOperation<T> {
                     }
                     final T service = (T) controller.getService();
                     ManagedExecutorWithHungThreads executor = executorProvider.getExecutor(service);
-                    context.getResult().set(executor.terminateHungTasks());
+                    executor.terminateHungTasks();
                 }
                 context.completeStep(OperationContext.RollbackHandler.NOOP_ROLLBACK_HANDLER);
             }

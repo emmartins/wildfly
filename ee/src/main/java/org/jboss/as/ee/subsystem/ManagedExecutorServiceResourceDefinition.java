@@ -193,7 +193,7 @@ public class ManagedExecutorServiceResourceDefinition extends SimpleResourceDefi
     /**
      * terminate hung threads op
      */
-    private static final TerminateHungTasksOperation<ManagedExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new TerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
+    private static final ManagedExecutorTerminateHungTasksOperation<ManagedExecutorServiceService> TERMINATE_HUNG_TASKS_OP = new ManagedExecutorTerminateHungTasksOperation<>(CAPABILITY, RESOLVER, service -> service.getExecutorService());
 
     /**
      *

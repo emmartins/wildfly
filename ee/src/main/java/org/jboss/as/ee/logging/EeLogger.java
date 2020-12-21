@@ -23,6 +23,7 @@
 package org.jboss.as.ee.logging;
 
 import static org.jboss.logging.Logger.Level.ERROR;
+import static org.jboss.logging.Logger.Level.INFO;
 import static org.jboss.logging.Logger.Level.WARN;
 
 import java.io.IOException;
@@ -1179,10 +1180,28 @@ public interface EeLogger extends BasicLogger {
     /**
      * Logs a warning message indicating a failure when terminating a managed executor's hung task.
      * @param cause     the cause of the error.
-     * @param taskName the name of the hung task.
      * @param executorName the name of the executor.
+     * @param taskName the name of the hung task.
      */
     @LogMessage(level = WARN)
     @Message(id = 128, value = "Failure when terminating %s hung task %s")
     void huntTaskTerminationFailure(@Cause Throwable cause, String executorName, String taskName);
+
+    /**
+     * Logs a message indicating a hung task was cancelled.
+     * @param executorName the name of the executor.
+     * @param taskName the name of the hung task.
+     */
+    @LogMessage(level = INFO)
+    @Message(id = 129, value = "%s hung task %s cancelled")
+    void hungTaskCancelled(String executorName, String taskName);
+
+    /**
+     * Logs a message indicating a hung task was not cancelled.
+     * @param executorName the name of the executor.
+     * @param taskName the name of the hung task.
+     */
+    @LogMessage(level = INFO)
+    @Message(id = 130, value = "%s hung task %s not cancelled")
+    void hungTaskNotCancelled(String executorName, String taskName);
 }
