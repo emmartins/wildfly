@@ -34,10 +34,14 @@ import java.util.Map;
  */
 public class ThreadContextProviderContextHandleFactory implements EE10ContextHandleFactory {
 
-    private final ThreadContextProvider threadContextProvider;
+    private static final int BASE_PRIORITY = 1000;
 
-    public ThreadContextProviderContextHandleFactory(ThreadContextProvider threadContextProvider) {
+    private final ThreadContextProvider threadContextProvider;
+    private final int priority;
+
+    public ThreadContextProviderContextHandleFactory(ThreadContextProvider threadContextProvider, int priority) {
         this.threadContextProvider = threadContextProvider;
+        this.priority = BASE_PRIORITY + priority;
     }
 
     @Override
@@ -62,7 +66,7 @@ public class ThreadContextProviderContextHandleFactory implements EE10ContextHan
 
     @Override
     public int getChainPriority() {
-        return Integer.MAX_VALUE;
+        return priority;
     }
 
     @Override

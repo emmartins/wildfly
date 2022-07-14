@@ -18,7 +18,6 @@ import org.jboss.as.ee.concurrent.handle.OtherEESetupActionsContextHandleFactory
 import org.jboss.as.ee.concurrent.handle.ThreadContextProviderContextHandleFactory;
 import org.jboss.as.ee.concurrent.service.ConcurrentContextService;
 import org.jboss.as.ee.concurrent.service.ConcurrentServiceNames;
-import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.as.ee.structure.DeploymentType;
 import org.jboss.as.ee.structure.DeploymentTypeMarker;
 import org.jboss.as.naming.context.NamespaceContextSelector;
@@ -109,12 +108,13 @@ public class EEConcurrentContextProcessor implements DeploymentUnitProcessor {
         }
         concurrentContext.addFactory(new OtherEESetupActionsContextHandleFactory(deploymentUnit.getAttachmentList(Attachments.OTHER_EE_SETUP_ACTIONS)));
         // add factories for deployment provided thread context providers
-        final ServiceLoader<ThreadContextProvider> threadContextProviderServiceLoader = ServiceLoader.load(ThreadContextProvider.class);
+        final ServiceLoader<ThreadContextProvider> threadContextProviderServiceLoader = ServiceLoader.load(ThreadContextProvider.class, moduleClassLoader);
         final Iterator<ThreadContextProvider> threadContextProviderIterator = threadContextProviderServiceLoader.iterator();
+        int count = 0;
         while (threadContextProviderIterator.hasNext()) {
             final ThreadContextProvider threadContextProvider = threadContextProviderIterator.next();
-            EeLogger.ROOT_LOGGER.warn("Adding concurrent context factory for threadContextProvider with type "+threadContextProvider.getThreadContextType());
-            concurrentContext.addFactory(new ThreadContextProviderContextHandleFactory(threadContextProvider));
+            concurrentContext.addFactory(new ThreadContextProviderContextHandleFactory(threadContextProvider, count));
+            count++;
         }
         final ConcurrentContextService service = new ConcurrentContextService(concurrentContext);
         final ServiceName serviceName = ConcurrentServiceNames.getConcurrentContextServiceName(applicationName, moduleName, componentName);

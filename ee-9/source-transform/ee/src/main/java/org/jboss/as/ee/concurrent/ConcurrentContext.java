@@ -153,7 +153,6 @@ public class ConcurrentContext {
                 } else if (contextServiceTypesConfiguration.isUnchanged(contextType)) {
                     setupContextHandle = ee10ContextHandleFactory.unchangedContext(contextService, contextObjectProperties);
                 } else {
-                    EeLogger.ROOT_LOGGER.warn("Context type "+contextType+" not supported by ContextService "+((ContextServiceImpl) contextService).getName());
                     setupContextHandle = null;
                 }
                 if (setupContextHandle != null) {
