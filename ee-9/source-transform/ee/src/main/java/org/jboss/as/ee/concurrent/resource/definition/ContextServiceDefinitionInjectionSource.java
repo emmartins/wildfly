@@ -19,6 +19,7 @@ package org.jboss.as.ee.concurrent.resource.definition;
 
 import org.glassfish.enterprise.concurrent.spi.TransactionSetupProvider;
 import org.jboss.as.ee.concurrent.ContextServiceImpl;
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfiguration;
 import org.jboss.as.ee.concurrent.DefaultContextSetupProviderImpl;
 import org.jboss.as.ee.concurrent.service.ConcurrentServiceNames;
 import org.jboss.as.ee.concurrent.service.ContextServiceService;
@@ -40,16 +41,11 @@ import org.jboss.msc.service.ServiceName;
  */
 public class ContextServiceDefinitionInjectionSource extends ResourceDefinitionInjectionSource {
 
-    public static final String CLEARED_PROP = "cleared";
-    public static final String PROPAGATED_PROP = "propagated";
-    public static final String UNCHANGED_PROP = "unchanged";
+    private final ContextServiceTypesConfiguration contextServiceTypesConfiguration;
 
-    private String[] cleared;
-    private String[] propagated;
-    private String[] unchanged;
-
-    public ContextServiceDefinitionInjectionSource(final String jndiName) {
+    public ContextServiceDefinitionInjectionSource(final String jndiName, final ContextServiceTypesConfiguration contextServiceTypesConfiguration) {
         super(jndiName);
+        this.contextServiceTypesConfiguration = contextServiceTypesConfiguration;
     }
 
     public void getResourceValue(final ResolutionContext context, final ServiceBuilder<?> serviceBuilder, final DeploymentPhaseContext phaseContext, final Injector<ManagedReferenceFactory> injector) throws DeploymentUnitProcessingException {
@@ -57,7 +53,7 @@ public class ContextServiceDefinitionInjectionSource extends ResourceDefinitionI
         final String resourceJndiName = "java:jboss/ee/concurrency/definition/context/"+resourceName;
         try {
             // install the resource service
-            final ContextServiceService resourceService = new ContextServiceService(resourceName, resourceJndiName, new DefaultContextSetupProviderImpl());
+            final ContextServiceService resourceService = new ContextServiceService(resourceName, resourceJndiName, new DefaultContextSetupProviderImpl(), contextServiceTypesConfiguration);
             final ServiceName resourceServiceName = ContextServiceResourceDefinition.CAPABILITY.getCapabilityServiceName(resourceName);
             phaseContext.getServiceTarget().addService(resourceServiceName)
                     .addDependency(ConcurrentServiceNames.TRANSACTION_SETUP_PROVIDER_SERVICE_NAME, TransactionSetupProvider.class, resourceService.getTransactionSetupProvider())
@@ -87,27 +83,7 @@ public class ContextServiceDefinitionInjectionSource extends ResourceDefinitionI
         }
     }
 
-    public String[] getCleared() {
-        return cleared;
-    }
-
-    public void setCleared(String[] cleared) {
-        this.cleared = cleared;
-    }
-
-    public String[] getPropagated() {
-        return propagated;
-    }
-
-    public void setPropagated(String[] propagated) {
-        this.propagated = propagated;
-    }
-
-    public String[] getUnchanged() {
-        return unchanged;
-    }
-
-    public void setUnchanged(String[] unchanged) {
-        this.unchanged = unchanged;
+    public ContextServiceTypesConfiguration getContextServiceTypesConfiguration() {
+        return contextServiceTypesConfiguration;
     }
 }

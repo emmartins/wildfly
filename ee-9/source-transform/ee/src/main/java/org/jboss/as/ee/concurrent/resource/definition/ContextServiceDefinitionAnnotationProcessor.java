@@ -18,6 +18,8 @@
 package org.jboss.as.ee.concurrent.resource.definition;
 
 import jakarta.enterprise.concurrent.ContextServiceDefinition;
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfiguration;
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfigurationBuilder;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionAnnotationProcessor;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionInjectionSource;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -30,6 +32,10 @@ import org.jboss.metadata.property.PropertyReplacer;
  * @author emmartins
  */
 public class ContextServiceDefinitionAnnotationProcessor extends ResourceDefinitionAnnotationProcessor {
+
+    public static final String CLEARED_PROP = "cleared";
+    public static final String PROPAGATED_PROP = "propagated";
+    public static final String UNCHANGED_PROP = "unchanged";
 
     private static final DotName CONTEXT_SERVICE_DEFINITION = DotName.createSimple(ContextServiceDefinition.class.getName());
     private static final DotName CONTEXT_SERVICE_DEFINITION_LIST = DotName.createSimple(ContextServiceDefinition.List.class.getName());
@@ -47,13 +53,11 @@ public class ContextServiceDefinitionAnnotationProcessor extends ResourceDefinit
     @Override
     protected ResourceDefinitionInjectionSource processAnnotation(AnnotationInstance annotationInstance, PropertyReplacer propertyReplacer) throws DeploymentUnitProcessingException {
         final String jndiName = AnnotationElement.asRequiredString(annotationInstance, AnnotationElement.NAME);
-        final String[] cleared = AnnotationElement.asOptionalStringArray(annotationInstance, ContextServiceDefinitionInjectionSource.CLEARED_PROP);
-        final String[] propagated = AnnotationElement.asOptionalStringArray(annotationInstance, ContextServiceDefinitionInjectionSource.PROPAGATED_PROP);
-        final String[] unchanged = AnnotationElement.asOptionalStringArray(annotationInstance, ContextServiceDefinitionInjectionSource.UNCHANGED_PROP);
-        final ContextServiceDefinitionInjectionSource injectionSource = new ContextServiceDefinitionInjectionSource(jndiName);
-        injectionSource.setCleared(cleared);
-        injectionSource.setPropagated(propagated);
-        injectionSource.setUnchanged(unchanged);
-        return injectionSource;
+        final ContextServiceTypesConfiguration contextServiceTypesConfiguration = new ContextServiceTypesConfigurationBuilder()
+                .setCleared(AnnotationElement.asOptionalStringArray(annotationInstance, CLEARED_PROP))
+                .setPropagated(AnnotationElement.asOptionalStringArray(annotationInstance, PROPAGATED_PROP))
+                .setUnchanged(AnnotationElement.asOptionalStringArray(annotationInstance, UNCHANGED_PROP))
+                .build();
+        return new ContextServiceDefinitionInjectionSource(jndiName, contextServiceTypesConfiguration);
     }
 }

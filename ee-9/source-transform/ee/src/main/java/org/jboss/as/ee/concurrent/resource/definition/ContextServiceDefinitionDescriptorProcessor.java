@@ -17,6 +17,8 @@
  */
 package org.jboss.as.ee.concurrent.resource.definition;
 
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfiguration;
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfigurationBuilder;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionDescriptorProcessor;
 import org.jboss.as.ee.resource.definition.ResourceDefinitionInjectionSource;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
@@ -24,8 +26,6 @@ import org.jboss.metadata.javaee.spec.ContextServiceMetaData;
 import org.jboss.metadata.javaee.spec.ContextServicesMetaData;
 import org.jboss.metadata.javaee.spec.Environment;
 import org.jboss.metadata.javaee.spec.RemoteEnvironment;
-
-import java.util.Set;
 
 import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
 
@@ -52,20 +52,12 @@ public class ContextServiceDefinitionDescriptorProcessor extends ResourceDefinit
         if (name == null || name.isEmpty()) {
             throw ROOT_LOGGER.elementAttributeMissing("<context-service>", "name");
         }
-        final ContextServiceDefinitionInjectionSource resourceDefinitionInjectionSource = new ContextServiceDefinitionInjectionSource(name);
-        final Set<String> cleared = metaData.getCleared();
-        if (cleared != null) {
-            resourceDefinitionInjectionSource.setCleared(cleared.toArray(new String[cleared.size()]));
-        }
-        final Set<String> propagated = metaData.getPropagated();
-        if (propagated != null) {
-            resourceDefinitionInjectionSource.setPropagated(propagated.toArray(new String[propagated.size()]));
-        }
-        final Set<String> unchanged = metaData.getUnchanged();
-        if (unchanged != null) {
-            resourceDefinitionInjectionSource.setUnchanged(unchanged.toArray(new String[unchanged.size()]));
-        }
-        // TODO properties?
-        return resourceDefinitionInjectionSource;
+        final ContextServiceTypesConfiguration contextServiceTypesConfiguration = new ContextServiceTypesConfigurationBuilder()
+                .setCleared(metaData.getCleared())
+                .setPropagated(metaData.getPropagated())
+                .setUnchanged(metaData.getUnchanged())
+                .build();
+        // TODO properties
+        return new ContextServiceDefinitionInjectionSource(name, contextServiceTypesConfiguration);
     }
 }

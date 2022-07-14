@@ -22,24 +22,26 @@
 
 package org.jboss.as.ee.concurrent;
 
-import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
-import static org.wildfly.common.Assert.checkArrayBounds;
-import static org.wildfly.common.Assert.checkNotNullParam;
+import org.glassfish.enterprise.concurrent.spi.ContextSetupProvider;
+import org.glassfish.enterprise.concurrent.spi.TransactionSetupProvider;
+import org.wildfly.security.manager.WildFlySecurityManager;
 
 import java.lang.reflect.Proxy;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.util.Map;
 
-import org.glassfish.enterprise.concurrent.spi.ContextSetupProvider;
-import org.glassfish.enterprise.concurrent.spi.TransactionSetupProvider;
-import org.wildfly.security.manager.WildFlySecurityManager;
+import static org.jboss.as.ee.logging.EeLogger.ROOT_LOGGER;
+import static org.wildfly.common.Assert.checkArrayBounds;
+import static org.wildfly.common.Assert.checkNotNullParam;
 
 /**
  * An extension of Jakarta EE RI {@link org.glassfish.enterprise.concurrent.ContextServiceImpl}, which properly supports a security manager.
  * @author Eduardo Martins
  */
 public class ContextServiceImpl extends org.glassfish.enterprise.concurrent.ContextServiceImpl {
+
+    private final ContextServiceTypesConfiguration contextServiceTypesConfiguration;
 
     /**
      *
@@ -48,7 +50,18 @@ public class ContextServiceImpl extends org.glassfish.enterprise.concurrent.Cont
      * @param transactionSetupProvider
      */
     public ContextServiceImpl(String name, ContextSetupProvider contextSetupProvider, TransactionSetupProvider transactionSetupProvider) {
+        this(name, contextSetupProvider, transactionSetupProvider, ContextServiceTypesConfiguration.DEFAULT);
+    }
+
+    /**
+     *
+     * @param name
+     * @param contextSetupProvider
+     * @param transactionSetupProvider
+     */
+    public ContextServiceImpl(String name, ContextSetupProvider contextSetupProvider, TransactionSetupProvider transactionSetupProvider, ContextServiceTypesConfiguration contextServiceTypesConfiguration) {
         super(name, contextSetupProvider, transactionSetupProvider);
+        this.contextServiceTypesConfiguration = contextServiceTypesConfiguration;
     }
 
     private <T> T internalCreateContextualProxy(T instance, Map<String, String> executionProperties, Class<T> intf) {
@@ -104,4 +117,7 @@ public class ContextServiceImpl extends org.glassfish.enterprise.concurrent.Cont
         }
     }
 
+    public ContextServiceTypesConfiguration getContextServiceTypesConfiguration() {
+        return contextServiceTypesConfiguration;
+    }
 }

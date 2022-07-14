@@ -24,6 +24,7 @@ package org.jboss.as.ee.concurrent.service;
 
 import org.glassfish.enterprise.concurrent.spi.ContextSetupProvider;
 import org.glassfish.enterprise.concurrent.spi.TransactionSetupProvider;
+import org.jboss.as.ee.concurrent.ContextServiceTypesConfiguration;
 import org.jboss.as.ee.concurrent.ContextServiceImpl;
 import org.jboss.as.ee.logging.EeLogger;
 import org.jboss.msc.service.StartContext;
@@ -41,12 +42,14 @@ public final class ContextServiceService extends EEConcurrentAbstractService<Con
     private final String name;
     private final ContextSetupProvider contextSetupProvider;
     private final InjectedValue<TransactionSetupProvider> transactionSetupProvider;
+    private final ContextServiceTypesConfiguration contextServiceTypesConfiguration;
     private volatile ContextServiceImpl contextService;
 
-    public ContextServiceService(final String name, final String jndiName, final ContextSetupProvider contextSetupProvider) {
+    public ContextServiceService(final String name, final String jndiName, final ContextSetupProvider contextSetupProvider, final ContextServiceTypesConfiguration contextServiceTypesConfiguration) {
         super(jndiName);
         this.name = name;
         this.contextSetupProvider = contextSetupProvider;
+        this.contextServiceTypesConfiguration = contextServiceTypesConfiguration;
         this.transactionSetupProvider = new InjectedValue<>();
     }
 
@@ -56,7 +59,7 @@ public final class ContextServiceService extends EEConcurrentAbstractService<Con
 
     @Override
     void startValue(final StartContext context) {
-        contextService = new ContextServiceImpl(name, contextSetupProvider, transactionSetupProvider.getOptionalValue());
+        contextService = new ContextServiceImpl(name, contextSetupProvider, transactionSetupProvider.getOptionalValue(), contextServiceTypesConfiguration);
     }
 
     @Override
