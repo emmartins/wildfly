@@ -73,7 +73,7 @@ public class ClassLoaderContextHandleFactory implements EE10ContextHandleFactory
 
     @Override
     public void writeSetupContextHandle(SetupContextHandle contextHandle, ObjectOutputStream out) throws IOException {
-        out.writeBoolean(((ClassLoaderSetupContextHandle)contextHandle).classLoader == null);
+        out.writeBoolean(((ClassLoaderSetupContextHandle)contextHandle).classLoader != null);
     }
 
     @Override

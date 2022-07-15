@@ -44,7 +44,7 @@ public interface ContextServiceTypesConfiguration extends Serializable  {
 
         @Override
         public boolean isPropagated(String contextType) {
-            return !isCleared(contextType) && !isUnchanged(contextType);
+            return !isCleared(contextType);
         }
 
         @Override

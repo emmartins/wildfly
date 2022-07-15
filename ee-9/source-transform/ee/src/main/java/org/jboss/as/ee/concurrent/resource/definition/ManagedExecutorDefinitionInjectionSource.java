@@ -56,12 +56,9 @@ public class ManagedExecutorDefinitionInjectionSource extends ResourceDefinition
 
     private String contextServiceRef;
     private long hungTaskThreshold;
-    private int maxAsync;
+    private int maxAsync = (ProcessorInfo.availableProcessors() * 2);
     private int hungTaskTerminationPeriod = 0;
     private boolean longRunningTasks = false;
-    private int coreThreads = (ProcessorInfo.availableProcessors() * 2);
-    private int maxPoolSize = coreThreads;
-    private int maxThreads = coreThreads;
     private long keepAliveTime = 60000;
     private TimeUnit keepAliveTimeUnit = TimeUnit.MILLISECONDS;
     private long threadLifeTime = 0L;
@@ -83,7 +80,7 @@ public class ManagedExecutorDefinitionInjectionSource extends ResourceDefinition
             final ServiceName resourceServiceName = ManagedExecutorServiceResourceDefinition.CAPABILITY.getCapabilityServiceName(resourceName);
             final ServiceBuilder resourceServiceBuilder = phaseContext.getServiceTarget().addService(resourceServiceName);
             final Supplier<ManagedExecutorHungTasksPeriodicTerminationService> hungTasksPeriodicTerminationService = resourceServiceBuilder.requires(ConcurrentServiceNames.HUNG_TASK_PERIODIC_TERMINATION_SERVICE_NAME);
-            final ManagedExecutorServiceService resourceService = new ManagedExecutorServiceService(resourceName, resourceJndiName, hungTaskThreshold, hungTaskTerminationPeriod, longRunningTasks, coreThreads, maxThreads, keepAliveTime, keepAliveTimeUnit, threadLifeTime, queueLength, rejectPolicy, threadPriority, hungTasksPeriodicTerminationService);
+            final ManagedExecutorServiceService resourceService = new ManagedExecutorServiceService(resourceName, resourceJndiName, hungTaskThreshold, hungTaskTerminationPeriod, longRunningTasks, maxAsync, maxAsync, keepAliveTime, keepAliveTimeUnit, threadLifeTime, queueLength, rejectPolicy, threadPriority, hungTasksPeriodicTerminationService);
             resourceServiceBuilder.setInstance(resourceService);
             final String contextServiceRef = this.contextServiceRef == null || this.contextServiceRef.isEmpty() ? "java:comp/DefaultContextService" : this.contextServiceRef;
             final ContextNames.BindInfo contextServiceBindInfo = ContextNames.bindInfoForEnvEntry(context.getApplicationName(), context.getModuleName(), context.getComponentName(), !context.isCompUsesModule(), contextServiceRef);
@@ -147,7 +144,9 @@ public class ManagedExecutorDefinitionInjectionSource extends ResourceDefinition
     }
 
     public void setMaxAsync(int maxAsync) {
-        this.maxAsync = maxAsync;
+        if (maxAsync > 0) {
+            this.maxAsync = maxAsync;
+        }
     }
 
     public int getHungTaskTerminationPeriod() {
@@ -164,30 +163,6 @@ public class ManagedExecutorDefinitionInjectionSource extends ResourceDefinition
 
     public void setLongRunningTasks(boolean longRunningTasks) {
         this.longRunningTasks = longRunningTasks;
-    }
-
-    public int getCoreThreads() {
-        return coreThreads;
-    }
-
-    public void setCoreThreads(int coreThreads) {
-        this.coreThreads = coreThreads;
-    }
-
-    public int getMaxPoolSize() {
-        return maxPoolSize;
-    }
-
-    public void setMaxPoolSize(int maxPoolSize) {
-        this.maxPoolSize = maxPoolSize;
-    }
-
-    public int getMaxThreads() {
-        return maxThreads;
-    }
-
-    public void setMaxThreads(int maxThreads) {
-        this.maxThreads = maxThreads;
     }
 
     public long getKeepAliveTime() {
