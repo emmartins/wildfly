@@ -50,7 +50,7 @@ public class ContextServiceImpl extends org.glassfish.enterprise.concurrent.Cont
      * @param transactionSetupProvider
      */
     public ContextServiceImpl(String name, ContextSetupProvider contextSetupProvider, TransactionSetupProvider transactionSetupProvider) {
-        this(name, contextSetupProvider, transactionSetupProvider, ContextServiceTypesConfiguration.DEFAULT);
+        this(name, contextSetupProvider, null, ContextServiceTypesConfiguration.DEFAULT);
     }
 
     /**
@@ -60,7 +60,7 @@ public class ContextServiceImpl extends org.glassfish.enterprise.concurrent.Cont
      * @param transactionSetupProvider
      */
     public ContextServiceImpl(String name, ContextSetupProvider contextSetupProvider, TransactionSetupProvider transactionSetupProvider, ContextServiceTypesConfiguration contextServiceTypesConfiguration) {
-        super(name, contextSetupProvider, transactionSetupProvider);
+        super(name, contextSetupProvider, null);
         this.contextServiceTypesConfiguration = contextServiceTypesConfiguration;
     }
 
