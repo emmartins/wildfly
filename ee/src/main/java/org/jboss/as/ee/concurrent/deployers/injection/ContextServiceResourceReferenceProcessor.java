@@ -4,13 +4,12 @@
  */
 package org.jboss.as.ee.concurrent.deployers.injection;
 
+import jakarta.enterprise.concurrent.ContextService;
 import org.jboss.as.ee.component.InjectionSource;
 import org.jboss.as.ee.component.LookupInjectionSource;
 import org.jboss.as.ee.component.deployers.EEResourceReferenceProcessor;
 import org.jboss.as.ee.concurrent.deployers.EEConcurrentDefaultBindingProcessor;
 import org.jboss.as.server.deployment.DeploymentUnitProcessingException;
-
-import jakarta.enterprise.concurrent.ContextService;
 
 /**
  * @author Eduardo Martins

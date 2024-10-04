@@ -17,12 +17,12 @@
         merge conflicts between commits changing the GA and those changing the V.
         -->
         <version>34.0.0.Final-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
+        <relativePath>../../pom.xml</relativePath>
     </parent>
 
-    <artifactId>wildfly-ee</artifactId>
+    <artifactId>wildfly-concurrency-spi</artifactId>
 
-    <name>WildFly: EE</name>
+    <name>WildFly: Concurrency SPI</name>
 
     <dependencyManagement>
         <dependencies>
@@ -30,13 +30,6 @@
                 <groupId>${ee.maven.groupId}</groupId>
                 <artifactId>wildfly-standard-ee-bom</artifactId>
                 <version>${ee.maven.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-            <dependency>
-                <groupId>${project.groupId}</groupId>
-                <artifactId>wildfly-standard-test-bom</artifactId>
-                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -69,11 +62,6 @@
         <dependency>
             <groupId>jakarta.transaction</groupId>
             <artifactId>jakarta.transaction-api</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.glassfish</groupId>
-            <artifactId>jakarta.enterprise.concurrent</artifactId>
         </dependency>
 
         <dependency>
@@ -134,10 +122,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>wildfly-concurrency-spi</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>wildfly-naming</artifactId>
         </dependency>
         <dependency>
@@ -155,17 +139,6 @@
         <dependency>
             <groupId>org.wildfly.transaction</groupId>
             <artifactId>wildfly-transaction-client</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.wildfly.core</groupId>
-            <artifactId>wildfly-subsystem-test</artifactId>
-            <type>pom</type>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
