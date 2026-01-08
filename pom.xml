@@ -295,7 +295,7 @@
          -->
         <version.ant.junit>1.10.15</version.ant.junit>
         <version.asciidoctor.plugin>2.2.6</version.asciidoctor.plugin>
-        <version.central.publishing.maven.plugin>0.9.0</version.central.publishing.maven.plugin>
+        <version.central.publishing.maven.plugin>1.1.1</version.central.publishing.maven.plugin>
         <version.org.jacoco>0.8.12</version.org.jacoco>
         <version.org.jboss.galleon>7.0.0.Beta3</version.org.jboss.galleon>
         <version.org.owasp.dependency-check>12.1.6</version.org.owasp.dependency-check>
@@ -2126,7 +2126,7 @@
                         </executions>
                     </plugin>
                     <plugin>
-                        <groupId>org.sonatype.central</groupId>
+                        <groupId>io.github.mavenplugins</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
                         <version>${version.central.publishing.maven.plugin}</version>
                         <extensions>true</extensions>
@@ -2138,6 +2138,16 @@
                             <skipPublishing>${skipPublishing}</skipPublishing>
                         </configuration>
                     </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>${version.central.publishing.maven.plugin}</version>
+<executions>
+    <execution>
+      <id>injected-central-publishing</id>
+      <phase>none</phase>
+    </execution>
+  </executions>                    </plugin>
                 </plugins>
             </build>
         </profile>
